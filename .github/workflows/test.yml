@@ -11,15 +11,13 @@ jobs:
       with:
         python-version: '3.12'
     
-    - run: |
-        pip install -r requirements.txt pytest
+    - run: pip install -r requirements.txt
+    
+    - name: Test Agent
+      run: python tests/test_agent.py
       env:
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
     
-    - run: python tests/test_agent.py
-      env:
-        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-    
-    - name: Success! 🎉
+    - name: All tests passed! 🎉
       if: success()
-      run: echo "All tests passed! Ready for production 🚀"
+      run: echo "Week1 Agent works perfectly! Ready for production 🚀"
