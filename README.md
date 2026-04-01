@@ -1,5 +1,5 @@
 
-# Simple Chat Agent - Week 1 Project
+# Simple Chat Agent
 
 OpenAI-compatible tool-calling AI Agent powered by Groq + Llama 3.1
 
