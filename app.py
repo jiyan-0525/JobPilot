@@ -21,29 +21,30 @@ st.markdown("**Calculator + Weather Tools** | Groq + Llama 3.1")
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# 显示聊天历史
+# Display chat history
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# 聊天输入
-if prompt := st.chat_input("问我天气或计算题..."):
-    # 添加用户消息
+# Chat input
+if prompt := st.chat_input("Ask me about weather or math..."):
+    # Add user message
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
     
-    # 生成AI回复
+    # Generate AI response
     with st.chat_message("assistant"):
-        with st.spinner("AI正在思考..."):
+        with st.spinner("AI is thinking..."):
             response = chat_with_tools(prompt)
         st.markdown(response)
         st.session_state.messages.append({"role": "assistant", "content": response})
 
-# 侧边栏：工具展示
+# Sidebar: Available tools
 with st.sidebar:
     st.header("🛠️ Available Tools")
-    st.info("**Calculator** - 数学计算")
-    st.info("**Weather** - 城市天气")
-    st.caption("支持北京、上海、Berlin等")
+    st.info("**Calculator** - Math calculations (+, -, *, /, **)")
+    st.info("**Weather** - Real-time weather worldwide")
+    st.caption("Supports Beijing, Shanghai, Berlin, and more")
+
 

@@ -98,7 +98,21 @@ def chat_with_tools(user_message: str) -> str:
         }
     ]
     
-    messages = [{"role": "user", "content": user_message}]
+    messages = [
+        {"role": "system", "content": """You are a helpful AI assistant with access to tools. 
+You MUST follow these rules:
+1. For ANY question about weather, city temperature, humidity, or climate → ALWAYS call get_weather with the city name
+2. For ANY math expression, calculation, or number question → ALWAYS call calculator
+3. Do not refuse to use tools - use them proactively and immediately
+4. After using a tool, provide a friendly response with the results
+
+Examples:
+- User: "What's the weather in Berlin?" → Call get_weather("Berlin")
+- User: "Calculate 123 + 456" → Call calculator("123 + 456")
+- User: "Berlin temperature?" → Call get_weather("Berlin")
+"""},
+        {"role": "user", "content": user_message}
+    ]
     
     # First call: LLM decides which tool(s) to use
     response = client.chat.completions.create(
