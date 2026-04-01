@@ -4,10 +4,22 @@ from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
-client = OpenAI(
-    api_key=os.getenv("GROQ_API_KEY"),
-    base_url="https://api.groq.com/openai/v1"
-)
+
+# Lazy client initialization to support testing without API key
+_client = None
+
+def get_client():
+    """Get or create the OpenAI client"""
+    global _client
+    if _client is None:
+        _client = OpenAI(
+            api_key=os.getenv("GROQ_API_KEY"),
+            base_url="https://api.groq.com/openai/v1"
+        )
+    return _client
+
+# For backwards compatibility in mocking
+client = None
 
 def calculator(expression: str) -> str:
     try:
@@ -17,6 +29,7 @@ def calculator(expression: str) -> str:
         return "Calculation error"
 
 def chat_with_tools(user_message: str):
+    client = get_client()
     tools = [{
         "type": "function",
         "function": {
