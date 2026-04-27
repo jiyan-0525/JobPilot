@@ -18,7 +18,7 @@ OpenAI-compatible tool-calling AI Agent powered by Groq + Llama 3.1
 
 ```bash
 # Clone & Install
-git clone git@github.com:Fiona-0525/simple-chat-agent.git
+git clone git@github.com:jiyan-0525/simple-chat-agent.git
 cd simple-chat-agent
 
 # Setup
