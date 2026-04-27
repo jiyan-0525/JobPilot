@@ -11,7 +11,7 @@ OpenAI-compatible tool-calling AI Agent powered by Groq + Llama 3.1
 | **Weather** | Real-time weather worldwide | `Beijing: 23°C, 68% humidity` |
 
 **Dual Interface**:
-- `python agent.py` → Command line
+- `python3 agent.py` → Command line
 - `streamlit run app.py` → **Web UI** (`localhost:8501`)
 
 ## 🚀 Quick Start
