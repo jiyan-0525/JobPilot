@@ -1,7 +1,7 @@
 
 # Simple Chat Agent
 
-OpenAI-compatible tool-calling AI Agent powered by Groq + Llama 3.1
+OpenAI-compatible tool-calling AI Agent powered by Groq + GPT-OSS 120B
 
 ## 🎯 Features
 
@@ -24,7 +24,7 @@ cd simple-chat-agent
 # Setup
 pip install -r requirements.txt
 cp .env.example .env
-# Edit .env → Add your GROQ_API_KEY & WEATHER_API_KEY
+# Edit .env → Add your GROQ_API_KEY (weather needs no key)
 
 # Run Command Line
 python agent.py
@@ -34,9 +34,9 @@ streamlit run app.py
 ```
 
 ## 🛠️ Tech Stack
-- 🤖 AI Engine: Groq + Llama 3.1 8B Instant
+- 🤖 AI Engine: Groq + GPT-OSS 120B (openai/gpt-oss-120b)
 - 🌐 Web UI: Streamlit
-- 🔧 Tools: Calculator + OpenWeatherMap API
+- 🔧 Tools: Calculator + Open-Meteo API (no key required)
 - 🧪 Testing: GitHub Actions CI/CD
 - 📦 Python: 3.10+ | OpenAI SDK v2.30+
 
@@ -63,9 +63,8 @@ simple-chat-agent/
 
 text
 GROQ_API_KEY=gsk-your-groq-key-here
-WEATHER_API_KEY=your-openweathermap-key
 Free API Keys:
 
-Groq → Fast & Free Llama inference
+Groq → Fast & Free OpenAI-compatible inference
 
-OpenWeatherMap → Free weather API
+Open-Meteo → Free weather API (no key needed)

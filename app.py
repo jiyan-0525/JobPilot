@@ -14,8 +14,8 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🚀 AI Agent Chat - Week2")
-st.markdown("**Calculator + Weather Tools** | Groq + Llama 3.1")
+st.title("🚀 AI Agent Chat")
+st.markdown("**Calculator + Weather Tools** | Groq + GPT-OSS 120B")
 
 # Chat history
 if "messages" not in st.session_state:

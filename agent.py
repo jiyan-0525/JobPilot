@@ -38,21 +38,60 @@ def calculator(expression: str) -> str:
     except Exception:
         return "Calculation error"
 
+WEATHER_CODES = {
+    0: "clear sky",
+    1: "mainly clear",
+    2: "partly cloudy",
+    3: "overcast",
+    45: "fog",
+    48: "depositing rime fog",
+    51: "light drizzle",
+    53: "moderate drizzle",
+    55: "dense drizzle",
+    61: "slight rain",
+    63: "moderate rain",
+    65: "heavy rain",
+    71: "slight snow",
+    73: "moderate snow",
+    75: "heavy snow",
+    80: "slight rain showers",
+    81: "moderate rain showers",
+    82: "violent rain showers",
+    95: "thunderstorm",
+    96: "thunderstorm with slight hail",
+    99: "thunderstorm with heavy hail",
+}
+
+
 def get_weather(city: str) -> str:
-    """Get real-time weather for any city"""
-    api_key = os.getenv("WEATHER_API_KEY")
-    if not api_key:
-        return f"Weather API not configured for {city}"
-    
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=en"
+    """Get real-time weather for any city (Open-Meteo, no API key required)"""
     try:
-        response = requests.get(url, timeout=5).json()
-        if response["cod"] == 200:
-            temp = response["main"]["temp"]
-            humidity = response["main"]["humidity"]
-            desc = response["weather"][0]["description"]
-            return f"{city}: {temp}°C, humidity {humidity}%, {desc}"
-        return f"Weather info unavailable for {city}"
+        geo = requests.get(
+            "https://geocoding-api.open-meteo.com/v1/search",
+            params={"name": city, "count": 1, "language": "en", "format": "json"},
+            timeout=5,
+        ).json()
+        if not geo.get("results"):
+            return f"City not found: {city}"
+
+        place = geo["results"][0]
+        lat, lon = place["latitude"], place["longitude"]
+
+        weather = requests.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": lat,
+                "longitude": lon,
+                "current": "temperature_2m,relative_humidity_2m,weather_code",
+            },
+            timeout=5,
+        ).json()
+
+        cur = weather["current"]
+        temp = cur["temperature_2m"]
+        humidity = cur["relative_humidity_2m"]
+        desc = WEATHER_CODES.get(cur["weather_code"], "unknown")
+        return f"{place['name']}: {temp}°C, humidity {humidity}%, {desc}"
     except Exception:
         return f"Network error for {city}"
 
