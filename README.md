@@ -68,3 +68,21 @@ Free API Keys:
 Groq → Fast & Free OpenAI-compatible inference
 
 Open-Meteo → Free weather API (no key needed)
+
+## 🗺️ Roadmap
+
+Learning goals — build these next, one at a time.
+
+| # | Goal | What it teaches | Status |
+|---|------|-----------------|--------|
+| 1 | **Development Assistant** | Agent tool orchestration / multi-step loop (read files, run commands, run tests) | 📋 Planned |
+| 2 | **Research Assistant** | Web retrieval + agentic loop (search the web, fetch pages, summarize) | 📋 Planned |
+| 3 | **Local Knowledge Base Q&A** | Full RAG pipeline (chunk → embed → vector store → retrieve → grounded answer with citations) | 🚧 In progress |
+
+Suggested order: start with the **Development Assistant** to get comfortable with tool
+orchestration, then the **Research Assistant** to learn retrieval over the web, and finally
+the **Local Knowledge Base Q&A** to build a complete RAG system.
+
+Currently in progress: **#3 Local Knowledge Base Q&A** (the RAG retrieval core is done).
+
+Each goal will be built on top of the existing tool-calling agent, with the same Groq + Streamlit stack.
