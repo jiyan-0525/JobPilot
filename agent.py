@@ -116,7 +116,7 @@ Examples:
     
     # First call: LLM decides which tool(s) to use
     response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model="openai/gpt-oss-120b",
         messages=messages,
         tools=tools,
         tool_choice="auto",
@@ -152,7 +152,7 @@ Examples:
         
         # Second call: LLM generates final response with tool results
         final_response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-120b",
             messages=messages
         )
         return final_response.choices[0].message.content
