@@ -9,8 +9,15 @@ __pycache__/
 .vscode/
 .idea/
 
+# Python 虚拟环境
+.venv/
+venv/
+env/
+reicht/
+
+# 环境变量
+.env
+
 # OS
 .DS_Store
 Thumbs.db
-.env
-.venv
