@@ -12,7 +12,7 @@ from resume_jobs.render import profile_block
 from resume_jobs.step import MODEL, run_step_tool
 
 JD_TEXT_LIMIT = 6000
-FIT_MAX_TOKENS = 1500
+FIT_MAX_TOKENS = 2500
 
 FIT_TOOL = {
     "type": "function",
@@ -39,6 +39,33 @@ FIT_TOOL = {
                 },
                 "reason_de": {"type": "string", "description": "One-sentence justification in German"},
                 "reason_en": {"type": "string", "description": "One-sentence justification in English"},
+                "learning_plan": {
+                    "type": "array",
+                    "description": (
+                        "What the candidate should learn to become competitive for this job, "
+                        "most important first. Only cover gaps identified in missing_skills."
+                    ),
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "skill": {"type": "string", "description": "Skill / topic to learn"},
+                            "priority": {"type": "string", "enum": ["high", "medium", "low"]},
+                            "why": {
+                                "type": "string",
+                                "description": "Why it matters for this specific job (grounded in the JD)",
+                            },
+                            "how": {
+                                "type": "string",
+                                "description": "Concrete way to learn it: topics to study, practice project, resource type",
+                            },
+                            "effort": {
+                                "type": "string",
+                                "description": "Rough effort to become job-ready, e.g. '1-2 weeks'",
+                            },
+                        },
+                        "required": ["skill", "priority", "why", "how", "effort"],
+                    },
+                },
             },
             "required": [
                 "score",
@@ -47,6 +74,7 @@ FIT_TOOL = {
                 "missing_skills",
                 "reason_de",
                 "reason_en",
+                "learning_plan",
             ],
         },
     },
@@ -70,6 +98,28 @@ def _strings(value: object) -> list[str]:
     return [str(x).strip() for x in value if str(x).strip()]
 
 
+def _plan(value: object) -> list[dict]:
+    """Coerce the learning plan into a clean list of steps (drops empty entries)."""
+    steps: list[dict] = []
+    for item in value or []:
+        if not isinstance(item, dict):
+            continue
+        skill = str(item.get("skill") or "").strip()
+        if not skill:
+            continue
+        priority = str(item.get("priority") or "").strip().lower()
+        steps.append(
+            {
+                "skill": skill,
+                "priority": priority if priority in ("high", "medium", "low") else "medium",
+                "why": str(item.get("why") or "").strip(),
+                "how": str(item.get("how") or "").strip(),
+                "effort": str(item.get("effort") or "").strip(),
+            }
+        )
+    return steps
+
+
 def normalize_fit(raw: object) -> dict:
     """Coerce any partial or garbled output into a complete fit dict."""
     raw = raw if isinstance(raw, dict) else {}
@@ -80,7 +130,26 @@ def normalize_fit(raw: object) -> dict:
         "missing_skills": _strings(raw.get("missing_skills")),
         "reason_de": str(raw.get("reason_de") or "").strip(),
         "reason_en": str(raw.get("reason_en") or "").strip(),
+        "learning_plan": _plan(raw.get("learning_plan")),
     }
+
+
+def learning_plan_markdown(fit: dict, job_title: str = "") -> str:
+    """Render a fit dict as a Markdown learning plan (for display or download)."""
+    title = f"# Learning plan — {job_title}" if job_title else "# Learning plan"
+    lines = [title, "", f"Fit score: **{fit.get('score', 0):.0f}/100** — {fit.get('verdict', '')}", ""]
+    if fit.get("missing_skills"):
+        lines += ["**Gaps to close:** " + ", ".join(fit["missing_skills"]), ""]
+    for i, step in enumerate(fit.get("learning_plan", []), start=1):
+        lines.append(f"## {i}. {step['skill']}  _{step['priority']} priority_")
+        if step["why"]:
+            lines.append(f"- **Why:** {step['why']}")
+        if step["how"]:
+            lines.append(f"- **How:** {step['how']}")
+        if step["effort"]:
+            lines.append(f"- **Effort:** {step['effort']}")
+        lines.append("")
+    return "\n".join(lines).strip()
 
 
 def analyze_fit(
@@ -90,14 +159,19 @@ def analyze_fit(
     result = run_step_tool(
         role="a technical recruiter assessing how well a candidate fits a job",
         task=(
-            "Compare the CANDIDATE PROFILE with the JOB DESCRIPTION and give an overall fit "
+            "Compare the CANDIDATE PROFILE with the JOB DESCRIPTION. Give an overall fit "
             "score from 0 to 100, a short verdict, the requirements the candidate clearly "
             "satisfies (matched_skills) and the important ones the profile does not show "
             "(missing_skills), plus a one-sentence justification in German and in English. "
-            "Ground every point in the profile — never credit skills the candidate has not shown."
+            "Then, assuming the candidate wants to apply for this job, produce a practical "
+            "learning_plan that closes those gaps, most important first: for each item give "
+            "the skill, a priority (high/medium/low), why it matters for this job, how to "
+            "learn it, and a rough effort estimate. Ground every point in the profile and the "
+            "job description — never credit skills the candidate has not shown."
         ),
         expected_output=(
-            "score (0-100), verdict, matched_skills, missing_skills, reason_de, reason_en."
+            "score (0-100), verdict, matched_skills, missing_skills, reason_de, reason_en, "
+            "and a learning_plan of prioritized steps (skill, priority, why, how, effort)."
         ),
         context=[
             f"CANDIDATE PROFILE\n{profile_block(profile)}",

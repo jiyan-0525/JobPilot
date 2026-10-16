@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 sys.path.append(".")
 from resume_jobs.cover_letter import write_cover_letter  # noqa: E402
 from resume_jobs.interview import prepare_interview  # noqa: E402
-from resume_jobs.jd_fit import analyze_fit  # noqa: E402
+from resume_jobs.jd_fit import analyze_fit, learning_plan_markdown  # noqa: E402
 from resume_jobs.jobs import HOME_POSTAL_CODE, search_corridor  # noqa: E402
 from resume_jobs.match import rank_jobs  # noqa: E402
 from resume_jobs.render import profile_block  # noqa: E402
@@ -480,3 +480,17 @@ with tab_jd:
                 st.markdown(f"**🇩🇪 {fit['reason_de']}**")
             if fit["reason_en"]:
                 st.markdown(f"**🇬🇧 {fit['reason_en']}**")
+
+            plan = fit.get("learning_plan") or []
+            if plan:
+                st.markdown("##### 📚 Learning plan — what to learn before applying")
+                st.dataframe(
+                    [{"priority": step["priority"], "learn": step["skill"],
+                      "why it matters": step["why"], "how to learn": step["how"],
+                      "effort": step["effort"]} for step in plan],
+                    width="stretch", hide_index=True,
+                )
+                st.download_button(
+                    "⬇️ learning_plan.md",
+                    learning_plan_markdown(fit),
+                    "learning_plan.md", "text/markdown")

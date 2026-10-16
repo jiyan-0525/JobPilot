@@ -2,7 +2,7 @@
 import json
 from types import SimpleNamespace
 
-from resume_jobs.jd_fit import analyze_fit, normalize_fit
+from resume_jobs.jd_fit import analyze_fit, learning_plan_markdown, normalize_fit
 
 PROFILE = {
     "name": "Alex Beispiel",
@@ -53,6 +53,30 @@ def test_normalize_fit_handles_garbage():
     assert fit["score"] == 0.0
     assert fit["matched_skills"] == []
     assert fit["reason_en"] == ""
+    assert fit["learning_plan"] == []
+
+
+def test_normalize_fit_coerces_learning_plan():
+    fit = normalize_fit({"learning_plan": [
+        {"skill": "Spark", "priority": "HIGH", "why": "w", "how": "h", "effort": "2 weeks"},
+        {"skill": "", "priority": "high"},        # dropped: no skill
+        "not a dict",                              # dropped
+        {"skill": "AWS", "priority": "weird"},     # invalid priority -> medium
+    ]})
+    assert [step["skill"] for step in fit["learning_plan"]] == ["Spark", "AWS"]
+    assert fit["learning_plan"][0]["priority"] == "high"    # lowercased
+    assert fit["learning_plan"][1]["priority"] == "medium"  # invalid -> medium
+
+
+def test_learning_plan_markdown_lists_steps():
+    fit = normalize_fit({
+        "score": 60, "verdict": "Partial match", "missing_skills": ["Spark"],
+        "learning_plan": [{"skill": "Spark", "priority": "high", "why": "core skill",
+                           "how": "build a pipeline", "effort": "2 weeks"}],
+    })
+    md = learning_plan_markdown(fit, job_title="Data Engineer")
+    assert "Learning plan — Data Engineer" in md
+    assert "Spark" in md and "build a pipeline" in md and "2 weeks" in md
 
 
 def test_analyze_fit_returns_structured_analysis():
@@ -63,6 +87,10 @@ def test_analyze_fit_returns_structured_analysis():
         "missing_skills": ["Spark", "AWS"],
         "reason_de": "Gute Basis, aber Spark fehlt.",
         "reason_en": "Good base, but Spark is missing.",
+        "learning_plan": [
+            {"skill": "Spark", "priority": "high", "why": "core of the role",
+             "how": "build an ETL project", "effort": "2-3 weeks"},
+        ],
     }
     client = FakeToolClient(payload)
     fit = analyze_fit(PROFILE, JD, client=client)
@@ -70,6 +98,7 @@ def test_analyze_fit_returns_structured_analysis():
     assert fit["score"] == 72.0
     assert fit["verdict"] == "Partial match"
     assert fit["missing_skills"] == ["Spark", "AWS"]
+    assert fit["learning_plan"][0]["skill"] == "Spark"
 
     # both the profile and the JD reached the prompt, via the fit tool
     request = client.requests[0]
