@@ -16,6 +16,7 @@ interview for each role.
 | 3 | **Matching** — rank jobs against the profile (DE + EN reasons) | library (`resume_jobs.match`) |
 | 4 | **Interview prep** — bilingual questions, answer outlines, gap analysis | library (`resume_jobs.interview`) |
 | 5 | **Cover letter** — Anschreiben (DE) + cover letter (EN) | library (`resume_jobs.cover_letter`) |
+| 6 | **Find jobs from a JD** — paste a job posting → extract roles/skills → search + rank by similarity | tab (`streamlit_app.py`) |
 
 > The earlier calculator / weather demo tools have been removed; see git history if needed.
 
@@ -56,9 +57,11 @@ JobPilot/
 │   ├── schema.py           # profile schema + normalization
 │   ├── resume.py           # extract_text() / parse_profile()
 │   ├── jobs.py             # Arbeitsagentur client (search + details)
+│   ├── arbeitnow.py        # Arbeitnow client (second source, no key)
 │   ├── step.py             # step framing: run_step / run_step_tool (role/task/context)
 │   ├── render.py           # profile_block / job_block
 │   ├── match.py            # rank_jobs() — step 3
+│   ├── jd_search.py        # find_jobs_from_jd() — JD → search + rank
 │   ├── interview.py        # prepare_interview() — step 4
 │   └── store.py            # JSON persistence (profiles, job caches)
 ├── rag.py                  # minimal RAG (question bank)

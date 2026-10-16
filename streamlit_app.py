@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 sys.path.append(".")
 from resume_jobs.cover_letter import write_cover_letter  # noqa: E402
 from resume_jobs.interview import prepare_interview  # noqa: E402
+from resume_jobs.jd_search import find_jobs_from_jd  # noqa: E402
 from resume_jobs.jobs import HOME_POSTAL_CODE, search_corridor  # noqa: E402
 from resume_jobs.match import rank_jobs  # noqa: E402
 from resume_jobs.render import profile_block  # noqa: E402
@@ -177,7 +178,7 @@ def glassdoor_url(keyword: str) -> str:
     """Deep link into Glassdoor's German job search (no public API available)."""
     return "https://www.glassdoor.de/Job/jobs.htm?sc.keyword=" + quote(keyword or "")
 
-for key in ("profile", "jobs", "ranked", "job", "interview_md", "cover_de", "cover_en"):
+for key in ("profile", "jobs", "ranked", "job", "interview_md", "cover_de", "cover_en", "jd_result"):
     st.session_state.setdefault(key, None)
 
 _ss = st.session_state
@@ -207,8 +208,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-tabs = st.tabs(["1 · Resume", "2 · Jobs", "3 · Match", "4 · Interview", "5 · Cover letter"])
-tab_resume, tab_jobs, tab_match, tab_interview, tab_cover = tabs
+tabs = st.tabs(["1 · Resume", "2 · Jobs", "🔎 Find jobs (JD)", "3 · Match",
+                "4 · Interview", "5 · Cover letter"])
+tab_resume, tab_jobs, tab_jd, tab_match, tab_interview, tab_cover = tabs
 
 # ---- 1 · Resume -----------------------------------------------------------
 with tab_resume:
@@ -327,6 +329,80 @@ with tab_jobs:
                                "jobs.json", "application/json", use_container_width=True)
             if c2.button("💾 Save jobs", use_container_width=True):
                 st.success(f"Saved: {save_jobs(jobs, keyword=keyword or 'jobs')}")
+
+# ---- ✎ · Find jobs from a job description ---------------------------------
+with tab_jd:
+    section("🔎", "Find jobs from a job description")
+    st.caption("Paste a job posting — the agent extracts the roles and skills, searches "
+               "the corridor (Arbeitsagentur + Arbeitnow), and ranks the closest matches.")
+    jd_text = st.text_area("Job description", height=200, key="jd_text",
+                           placeholder="Paste the full job advertisement here…")
+    if st.button("Find matching jobs", type="primary", disabled=not jd_text.strip()):
+        with st.spinner("Reading the job description and searching…"):
+            try:
+                st.session_state.jd_result = find_jobs_from_jd(jd_text)
+            except Exception as exc:
+                st.error(f"Failed: {exc}")
+
+    result = st.session_state.jd_result
+    if result:
+        query = result["query"]
+        st.success(f"{len(result['jobs'])} candidates found · {len(result['ranked'])} ranked")
+
+        facts = []
+        if query["roles"]:
+            facts.append(("Search roles", ", ".join(query["roles"])))
+        if query["skills"]:
+            facts.append(("Key skills", ", ".join(query["skills"][:10])))
+        if query["location"]:
+            facts.append(("Location", query["location"]))
+        if query["seniority"]:
+            facts.append(("Seniority", query["seniority"]))
+        if facts:
+            st.markdown(
+                '<div class="kp-card">' + "".join(
+                    f'<div class="k">{html.escape(k)}</div>'
+                    f'<div class="s" style="margin-bottom:.6rem">{html.escape(v)}</div>'
+                    for k, v in facts) + "</div>",
+                unsafe_allow_html=True,
+            )
+
+        ranked = result["ranked"]
+        if ranked:
+            best = ranked[0]
+            m1, m2 = st.columns(2)
+            m1.metric("Best match", f"{best['score']:.0f} / 100")
+            m2.metric("Shortlist", len(ranked))
+            st.dataframe(
+                [{"score": r["score"], "title": r["job"]["title"], "company": r["job"]["company"],
+                  "location": r["job"]["location"] or "—", "reason (EN)": r["reason_en"],
+                  "open": r["job"]["url"]} for r in ranked],
+                width="stretch", hide_index=True,
+                column_config={
+                    "score": st.column_config.ProgressColumn(
+                        "score", min_value=0, max_value=100, format="%d"),
+                    "open": st.column_config.LinkColumn("open", display_text="Open ↗"),
+                })
+
+        scores = {r["job_id"]: r["score"] for r in ranked}
+        ordered = ([r["job"] for r in ranked]
+                   + [j for j in result["jobs"] if j["id"] not in scores])
+        if ordered:
+            labels = [
+                f"{scores[j['id']]:.0f} · {j['title']} @ {j['company']} — {j['location'] or '—'}"
+                if j["id"] in scores else
+                f"{j['title']} @ {j['company']} — {j['location'] or '—'}"
+                for j in ordered
+            ]
+            idx = st.selectbox("Pick the target job", range(len(ordered)),
+                               format_func=lambda i: labels[i], key="jd_pick")
+            st.session_state.job = ordered[idx]
+            st.success(f"Target job selected — **{st.session_state.job['title']}** "
+                       f"@ {st.session_state.job['company']} (tabs 4 & 5)")
+            if st.session_state.job["url"]:
+                st.link_button("🔗 Open job posting", st.session_state.job["url"])
+        else:
+            st.info("No candidate jobs found — try a fuller job description.")
 
 # ---- 3 · Match ------------------------------------------------------------
 with tab_match:
