@@ -9,7 +9,9 @@ from __future__ import annotations
 import json
 from typing import Any, Optional, Sequence
 
-MODEL = "openai/gpt-oss-120b"
+from resume_jobs.llm import get_model
+
+MODEL = get_model()
 
 # Grounding guard: included in every step prompt.
 NO_FABRICATION = (

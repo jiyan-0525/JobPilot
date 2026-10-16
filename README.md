@@ -73,9 +73,13 @@ JobPilot/
 
 ```
 GROQ_API_KEY=gsk-your-groq-key-here
+GROQ_MODEL=openai/gpt-oss-120b        # optional; defaults to openai/gpt-oss-120b
 ```
 
 - **Groq** → fast OpenAI-compatible inference (free tier).
+- **`GROQ_MODEL`** → optional model override. Free-tier daily token caps are
+  per-model, so switching (e.g. `openai/gpt-oss-20b`) sidesteps a TPD 429
+  without touching code.
 - **Bundesagentur für Arbeit Jobsuche API** → free, public, no key required
   (`X-API-Key: jobboerse-jobsuche`).
 

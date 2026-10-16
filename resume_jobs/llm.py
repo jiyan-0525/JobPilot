@@ -6,7 +6,18 @@ from openai import OpenAI
 
 load_dotenv()
 
+DEFAULT_MODEL = "openai/gpt-oss-120b"
+
 _client = None
+
+
+def get_model() -> str:
+    """Resolve the model id, overridable via the GROQ_MODEL env var.
+
+    Handy on Groq's free tier: each model has its own daily token cap, so a
+    different model resumes work without editing code.
+    """
+    return os.getenv("GROQ_MODEL", DEFAULT_MODEL)
 
 
 def get_client() -> OpenAI:
