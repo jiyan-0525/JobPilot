@@ -1,7 +1,12 @@
 """Tests for the step framing (role / task / expected_output / context)."""
+import json
 from types import SimpleNamespace
 
-from resume_jobs.step import build_messages, run_step
+import httpx
+import pytest
+from openai import BadRequestError
+
+from resume_jobs.step import build_messages, run_step, run_step_tool
 
 
 class FakeTextClient:
@@ -54,3 +59,83 @@ def test_run_step_returns_text_and_sends_system_message():
     assert request["messages"][0]["role"] == "system"
     assert request["messages"][1]["role"] == "user"
     assert request["temperature"] == 0.2
+
+
+TOOL = {
+    "type": "function",
+    "function": {
+        "name": "emit",
+        "parameters": {"type": "object", "properties": {"ok": {"type": "boolean"}}},
+    },
+}
+
+
+def _bad_request(code):
+    request = httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions")
+    return BadRequestError(
+        "Tool choice is required, but model did not call a tool",
+        response=httpx.Response(400, request=request),
+        body={"error": {"code": code, "message": "Tool choice is required"}},
+    )
+
+
+class FakeToolClient:
+    """Fails the first `failures` forced-tool calls, then returns a tool call."""
+
+    def __init__(self, payload, failures=0, code="tool_use_failed"):
+        self.payload = payload
+        self.failures = failures
+        self.code = code
+        self.requests = []
+        self.completions = self
+
+    @property
+    def chat(self):
+        return self
+
+    def create(self, **kwargs):
+        self.requests.append(kwargs)
+        if self.failures > 0:
+            self.failures -= 1
+            raise _bad_request(self.code)
+        name = kwargs["tool_choice"]["function"]["name"]
+        call = SimpleNamespace(
+            function=SimpleNamespace(name=name, arguments=json.dumps(self.payload))
+        )
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(tool_calls=[call]))]
+        )
+
+
+def test_run_step_tool_retries_transient_tool_use_failed(monkeypatch):
+    monkeypatch.setattr("resume_jobs.step.time.sleep", lambda *_: None)
+    client = FakeToolClient({"ok": True}, failures=1)
+    result = run_step_tool("r", "t", "e", None, TOOL, client=client)
+    assert result == {"ok": True}
+    assert len(client.requests) == 2
+
+
+def test_run_step_tool_gives_up_after_attempts(monkeypatch):
+    monkeypatch.setattr("resume_jobs.step.time.sleep", lambda *_: None)
+    client = FakeToolClient({"ok": True}, failures=99)
+    with pytest.raises(ValueError):
+        run_step_tool("r", "t", "e", None, TOOL, client=client)
+    assert len(client.requests) == 3
+
+
+def test_run_step_tool_does_not_retry_unrelated_400(monkeypatch):
+    monkeypatch.setattr("resume_jobs.step.time.sleep", lambda *_: None)
+    client = FakeToolClient({"ok": True}, failures=99, code="invalid_request_error")
+    with pytest.raises(BadRequestError):
+        run_step_tool("r", "t", "e", None, TOOL, client=client)
+    assert len(client.requests) == 1
+
+
+def test_run_step_tool_caps_reasoning_for_gpt_oss():
+    client = FakeToolClient({"ok": True})
+    run_step_tool("r", "t", "e", None, TOOL, client=client, model="openai/gpt-oss-120b")
+    assert client.requests[0]["extra_body"] == {"reasoning_effort": "low"}
+
+    other = FakeToolClient({"ok": True})
+    run_step_tool("r", "t", "e", None, TOOL, client=other, model="llama-3.3-70b-versatile")
+    assert "extra_body" not in other.requests[0]

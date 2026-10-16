@@ -7,7 +7,10 @@ A step reduces to a system prompt (role) and a user prompt made of `task`,
 from __future__ import annotations
 
 import json
+import time
 from typing import Any, Optional, Sequence
+
+from openai import BadRequestError
 
 from resume_jobs.llm import get_model
 
@@ -18,6 +21,33 @@ NO_FABRICATION = (
     "Ground every statement in the provided context. Never invent skills, tools, "
     "technologies, certifications, or experience that are not explicitly present there."
 )
+
+# Groq returns this 400 when a forced tool call comes back without one — gpt-oss
+# intermittently answers in prose instead (or spends its whole budget on
+# reasoning). It is transient, so retry a couple of times before giving up.
+_TOOL_USE_FAILED = "tool_use_failed"
+_TOOL_ATTEMPTS = 3
+_RETRY_BACKOFF_S = 1.5
+
+
+def _is_tool_use_failed(exc: Exception) -> bool:
+    body = getattr(exc, "body", None)
+    if isinstance(body, dict):
+        error = body.get("error")
+        if isinstance(error, dict) and error.get("code") == _TOOL_USE_FAILED:
+            return True
+    return _TOOL_USE_FAILED in str(exc)
+
+
+def _request_kwargs(model: str) -> dict:
+    """Per-model tuning for the forced-tool-call request.
+
+    On gpt-oss, reasoning tokens count against `max_tokens`; capping reasoning
+    keeps room for the tool call that `tool_choice` demands.
+    """
+    if "gpt-oss" in model:
+        return {"extra_body": {"reasoning_effort": "low"}}
+    return {}
 
 
 def build_messages(
@@ -85,16 +115,32 @@ def run_step_tool(
     """
     client = _client_or_default(client)
     name = tool["function"]["name"]
-    resp = client.chat.completions.create(
+    request = dict(
         model=model,
         messages=build_messages(role, task, expected_output, context),
         tools=[tool],
         tool_choice={"type": "function", "function": {"name": name}},
         temperature=temperature,
         max_tokens=max_tokens,
+        **_request_kwargs(model),
     )
-    message = resp.choices[0].message
-    tool_calls = getattr(message, "tool_calls", None)
-    if not tool_calls:
-        raise ValueError(f"model did not call {name}")
-    return json.loads(tool_calls[0].function.arguments)
+
+    last_error: Optional[Exception] = None
+    for attempt in range(_TOOL_ATTEMPTS):
+        try:
+            resp = client.chat.completions.create(**request)
+            message = resp.choices[0].message
+            tool_calls = getattr(message, "tool_calls", None)
+            if tool_calls:
+                return json.loads(tool_calls[0].function.arguments)
+            last_error = ValueError(f"model did not call {name}")
+        except BadRequestError as exc:
+            if not _is_tool_use_failed(exc):
+                raise
+            last_error = exc
+        if attempt < _TOOL_ATTEMPTS - 1:
+            time.sleep(_RETRY_BACKOFF_S * (attempt + 1))
+
+    raise ValueError(
+        f"model did not call {name} after {_TOOL_ATTEMPTS} attempts"
+    ) from last_error
