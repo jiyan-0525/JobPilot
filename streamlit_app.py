@@ -1,6 +1,6 @@
 """JobPilot — the whole flow in one Streamlit app.
 
-Tabs: Resume → Jobs → Match → Interview → Cover letter → Fit check.
+Tabs: Resume (incl. Fit check) → Jobs → Match → Interview → Cover letter.
 Each step reuses the `resume_jobs` library; state is carried in session_state.
 
 Run: .venv/bin/python -m streamlit run streamlit_app.py
@@ -192,22 +192,19 @@ st.markdown(
 )
 
 tabs = st.tabs(["📄 1 · Resume", "🔎 2 · Jobs", "🎯 3 · Match",
-                "🗣️ 4 · Interview", "✉️ 5 · Cover letter", "🧩 Fit check"])
-tab_resume, tab_jobs, tab_match, tab_interview, tab_cover, tab_jd = tabs
+                "🗣️ 4 · Interview", "✉️ 5 · Cover letter"])
+tab_resume, tab_jobs, tab_match, tab_interview, tab_cover = tabs
 
 # ---- 1 · Resume -----------------------------------------------------------
 with tab_resume:
     section("📄", "Resume")
     uploaded = st.file_uploader("Upload resume PDF", type=["pdf"])
-    pasted = st.text_area("…or paste the resume text", height=130)
 
     text = ""
     if uploaded is not None:
         text = extract_text(uploaded)
         if not text:
             st.error("No text extracted — likely a scanned PDF (OCR unsupported).")
-    elif pasted.strip():
-        text = pasted.strip()
 
     if st.button("Analyze resume", type="primary", disabled=not text):
         with st.spinner("Extracting profile…"):
@@ -247,6 +244,62 @@ with tab_resume:
                            "profile.json", "application/json", use_container_width=True)
         if c2.button("💾 Save profile", use_container_width=True):
             st.success(f"Saved: {save_profile(profile)}")
+
+    section("🧩", "Fit check")
+    if not st.session_state.profile:
+        st.info("Analyze your resume above to unlock the fit check.")
+    else:
+        st.caption(f"Comparing against **{st.session_state.profile['name'] or 'your profile'}** "
+                   "— paste a job posting to see how well it matches.")
+        jd_text = st.text_area("Job description", height=200, key="jd_text",
+                               placeholder="Paste the full job advertisement here…")
+        if st.button("Analyze fit", type="primary", disabled=not jd_text.strip()):
+            with st.spinner("Comparing the job description with your resume…"):
+                try:
+                    st.session_state.fit_result = analyze_fit(st.session_state.profile, jd_text)
+                except Exception as exc:
+                    st.error(f"Fit check failed: {exc}")
+
+        fit = st.session_state.fit_result
+        if fit:
+            m1, m2 = st.columns(2)
+            m1.metric("Fit score", f"{fit['score']:.0f} / 100")
+            m2.metric("Verdict", fit["verdict"] or "—")
+
+            c1, c2 = st.columns(2)
+            c1.markdown(
+                '<div class="kp-card">'
+                f'<div class="k">Matched ({len(fit["matched_skills"])})</div>'
+                f'<div class="s">{html.escape(", ".join(fit["matched_skills"]) or "—")}</div>'
+                "</div>",
+                unsafe_allow_html=True,
+            )
+            c2.markdown(
+                '<div class="kp-card">'
+                f'<div class="k">Missing ({len(fit["missing_skills"])})</div>'
+                f'<div class="s">{html.escape(", ".join(fit["missing_skills"]) or "—")}</div>'
+                "</div>",
+                unsafe_allow_html=True,
+            )
+
+            if fit["reason_de"]:
+                st.markdown(f"**🇩🇪 {fit['reason_de']}**")
+            if fit["reason_en"]:
+                st.markdown(f"**🇬🇧 {fit['reason_en']}**")
+
+            plan = fit.get("learning_plan") or []
+            if plan:
+                st.markdown("##### 📚 Learning plan — what to learn before applying")
+                st.dataframe(
+                    [{"priority": step["priority"], "learn": step["skill"],
+                      "why it matters": step["why"], "how to learn": step["how"],
+                      "effort": step["effort"]} for step in plan],
+                    width="stretch", hide_index=True,
+                )
+                st.download_button(
+                    "⬇️ learning_plan.md",
+                    learning_plan_markdown(fit),
+                    "learning_plan.md", "text/markdown")
 
 # ---- 2 · Jobs -------------------------------------------------------------
 with tab_jobs:
@@ -418,61 +471,3 @@ with tab_cover:
             st.markdown(st.session_state.cover_en)
             st.download_button("⬇️ cover_letter_en.md", st.session_state.cover_en,
                                "cover_letter_en.md", "text/markdown")
-
-# ---- 🧩 · Fit check: job description vs resume -----------------------------
-with tab_jd:
-    section("🧩", "Fit check")
-    if not st.session_state.profile:
-        st.info("Open the **📄 1 · Resume** tab first to parse your resume.")
-    else:
-        st.caption(f"Comparing against **{st.session_state.profile['name'] or 'your profile'}** "
-                   "— paste a job posting to see how well it matches.")
-        jd_text = st.text_area("Job description", height=200, key="jd_text",
-                               placeholder="Paste the full job advertisement here…")
-        if st.button("Analyze fit", type="primary", disabled=not jd_text.strip()):
-            with st.spinner("Comparing the job description with your resume…"):
-                try:
-                    st.session_state.fit_result = analyze_fit(st.session_state.profile, jd_text)
-                except Exception as exc:
-                    st.error(f"Fit check failed: {exc}")
-
-        fit = st.session_state.fit_result
-        if fit:
-            m1, m2 = st.columns(2)
-            m1.metric("Fit score", f"{fit['score']:.0f} / 100")
-            m2.metric("Verdict", fit["verdict"] or "—")
-
-            c1, c2 = st.columns(2)
-            c1.markdown(
-                '<div class="kp-card">'
-                f'<div class="k">Matched ({len(fit["matched_skills"])})</div>'
-                f'<div class="s">{html.escape(", ".join(fit["matched_skills"]) or "—")}</div>'
-                "</div>",
-                unsafe_allow_html=True,
-            )
-            c2.markdown(
-                '<div class="kp-card">'
-                f'<div class="k">Missing ({len(fit["missing_skills"])})</div>'
-                f'<div class="s">{html.escape(", ".join(fit["missing_skills"]) or "—")}</div>'
-                "</div>",
-                unsafe_allow_html=True,
-            )
-
-            if fit["reason_de"]:
-                st.markdown(f"**🇩🇪 {fit['reason_de']}**")
-            if fit["reason_en"]:
-                st.markdown(f"**🇬🇧 {fit['reason_en']}**")
-
-            plan = fit.get("learning_plan") or []
-            if plan:
-                st.markdown("##### 📚 Learning plan — what to learn before applying")
-                st.dataframe(
-                    [{"priority": step["priority"], "learn": step["skill"],
-                      "why it matters": step["why"], "how to learn": step["how"],
-                      "effort": step["effort"]} for step in plan],
-                    width="stretch", hide_index=True,
-                )
-                st.download_button(
-                    "⬇️ learning_plan.md",
-                    learning_plan_markdown(fit),
-                    "learning_plan.md", "text/markdown")

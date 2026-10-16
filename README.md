@@ -16,7 +16,7 @@ interview for each role.
 | 3 | **Matching** — rank jobs against the profile (DE + EN reasons) | library (`resume_jobs.match`) |
 | 4 | **Interview prep** — bilingual questions, answer outlines, gap analysis | library (`resume_jobs.interview`) |
 | 5 | **Cover letter** — Anschreiben (DE) + cover letter (EN) | library (`resume_jobs.cover_letter`) |
-| 6 | **Fit check** — paste a job posting → CV-vs-JD fit score, matched/missing skills, and a learning plan for the gaps | `streamlit_app.py` (tab after Cover letter) (`resume_jobs.jd_fit`) |
+| 6 | **Fit check** — paste a job posting → CV-vs-JD fit score, matched/missing skills, and a learning plan for the gaps | `streamlit_app.py` (inside the Resume tab, below the profile) (`resume_jobs.jd_fit`) |
 
 > The earlier calculator / weather demo tools have been removed; see git history if needed.
 
@@ -52,7 +52,7 @@ pip install -r requirements.txt
 JobPilot/
 ├── resume_app.py           # Streamlit: resume → profile
 ├── jobs_app.py             # Streamlit: job search corridor
-├── streamlit_app.py        # Streamlit: workflow tabs + Fit check (after Cover letter)
+├── streamlit_app.py        # Streamlit: workflow tabs + Fit check (inside Resume tab)
 ├── resume_jobs/
 │   ├── llm.py              # shared Groq client (lazy)
 │   ├── schema.py           # profile schema + normalization
@@ -98,7 +98,6 @@ GROQ_MODEL=openai/gpt-oss-120b        # optional; defaults to openai/gpt-oss-120
 | 4 | Interview prep (DE/EN questions & answers) | ✅ done |
 | 5 | Cover letter (Anschreiben DE / cover letter EN) | ✅ done |
 | 6 | Fit check: paste a JD → fit score, gaps, learning plan | ✅ done |
-| 7 | Multi-tab app | 📋 planned |
 
 An optional question-bank RAG would use the minimal `rag.py`.
 
