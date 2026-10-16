@@ -48,7 +48,7 @@ st.markdown(
           radial-gradient(760px 520px at -8% 6%, rgba(129,140,248,.12), transparent 55%),
           var(--kp-bg);
       }
-      .block-container { padding-top: 1.4rem; padding-bottom: 3rem; max-width: 1180px; }
+      .block-container { padding: 1.4rem 2rem 3rem; max-width: 100%; }
       #MainMenu, header [data-testid="stToolbar"], footer { visibility: hidden; }
 
       /* ---- hero ---------------------------------------------------------- */
@@ -316,7 +316,7 @@ with tab_jobs:
                 [{"source": j.get("source", ""), "km": j["distance_km"], "title": j["title"],
                   "company": j["company"], "location": j["location"], "type": j["offer_type"],
                   "open": j["url"]} for j in jobs],
-                use_container_width=True, hide_index=True,
+                width="stretch", hide_index=True,
                 column_config={
                     "km": st.column_config.NumberColumn("km from home", format="%.1f km"),
                     "open": st.column_config.LinkColumn("open", display_text="Open ↗"),
@@ -352,7 +352,7 @@ with tab_match:
             st.dataframe(
                 [{"score": r["score"], "title": r["job"]["title"], "company": r["job"]["company"],
                   "reason (EN)": r["reason_en"], "open": r["job"]["url"]} for r in ranked],
-                use_container_width=True, hide_index=True,
+                width="stretch", hide_index=True,
                 column_config={
                     "score": st.column_config.ProgressColumn(
                         "score", min_value=0, max_value=100, format="%d"),
