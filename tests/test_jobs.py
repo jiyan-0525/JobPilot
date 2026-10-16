@@ -122,19 +122,42 @@ def test_search_once_builds_params_and_parses():
     assert call["headers"]["X-API-Key"] == DEFAULT_API_KEY
 
 
-def test_search_corridor_dedupes_keeps_smallest_distance():
+def _at(job, lat, lon):
+    """Point a raw job's first location at explicit coordinates."""
+    job["stellenlokationen"][0]["breite"] = lat
+    job["stellenlokationen"][0]["laenge"] = lon
+    return job
+
+
+def test_search_corridor_dedupes_and_measures_distance_from_home():
+    near = _at(raw_job("R-1"), 49.1805, 9.1430)     # ~0 km from home (74078)
+    far = _at(raw_job("R-2"), 48.771, 9.173)        # Stuttgart, ~45 km
+    dup = _at(raw_job("R-1", dist=999), 49.9, 9.9)  # same id from another city
+
     def handler(url, params):
         if params.get("wo") == "Heilbronn":
-            return {"ergebnisliste": [raw_job("R-1", dist=40), raw_job("R-2", dist=12)]}, 200
-        return {"ergebnisliste": [raw_job("R-1", dist=3)]}, 200
+            return {"ergebnisliste": [dup]}, 200
+        return {"ergebnisliste": [near, far]}, 200
 
     session = FakeSession(handler)
     jobs = search_corridor(keyword="Data Engineer", corridor=(("Heilbronn", 45), ("Stuttgart", 35)), http=session)
 
     by_id = {job["id"]: job for job in jobs}
-    assert set(by_id) == {"R-1", "R-2"}          # deduped across the two searches
-    assert by_id["R-1"]["distance_km"] == 3      # smaller distance kept
-    assert [job["id"] for job in jobs] == ["R-1", "R-2"]  # sorted by distance
+    assert set(by_id) == {"R-1", "R-2"}              # deduped across the two searches
+    assert by_id["R-1"]["distance_km"] < 1           # measured from home, not the search city
+    assert by_id["R-2"]["distance_km"] > 40
+    assert [job["id"] for job in jobs] == ["R-1", "R-2"]  # nearest first
+
+
+def test_search_corridor_marks_jobs_without_coordinates():
+    def handler(url, params):
+        item = raw_job("R-1")
+        item["stellenlokationen"] = []  # remote: no location -> no coordinates
+        return {"ergebnisliste": [item]}, 200
+
+    session = FakeSession(handler)
+    jobs = search_corridor(keyword="Data Engineer", corridor=(), remote=True, http=session)
+    assert jobs[0]["distance_km"] is None
 
 
 # ---- details ---------------------------------------------------------------

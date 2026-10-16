@@ -9,7 +9,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 sys.path.append(".")
-from resume_jobs.jobs import get_job_details, search_corridor  # noqa: E402
+from resume_jobs.jobs import HOME_POSTAL_CODE, get_job_details, search_corridor  # noqa: E402
 from resume_jobs.store import save_jobs  # noqa: E402
 
 load_dotenv()
@@ -51,7 +51,7 @@ with st.form("search_form"):
 if submitted:
     offer_types = tuple(OFFER_OPTIONS[l] for l in selected_offers if l in OFFER_OPTIONS) or (1,)
     remote = REMOTE_LABEL in selected_offers
-    corridor = (("Heilbronn", radius), ("Stuttgart", max(10, radius - 10)), ("Baden-Württemberg", None))
+    corridor = ((HOME_POSTAL_CODE, radius), ("Stuttgart", max(10, radius - 10)), ("Baden-Württemberg", None))
     with st.spinner("Searching the corridor..."):
         try:
             st.session_state.jobs = search_corridor(

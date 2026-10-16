@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 sys.path.append(".")
 from resume_jobs.cover_letter import write_cover_letter  # noqa: E402
 from resume_jobs.interview import prepare_interview  # noqa: E402
-from resume_jobs.jobs import search_corridor  # noqa: E402
+from resume_jobs.jobs import HOME_POSTAL_CODE, search_corridor  # noqa: E402
 from resume_jobs.match import rank_jobs  # noqa: E402
 from resume_jobs.render import profile_block  # noqa: E402
 from resume_jobs.resume import extract_text, parse_profile  # noqa: E402
@@ -218,7 +218,7 @@ with tab_jobs:
     if st.button("Search jobs", type="primary"):
         offer_types = tuple(OFFER_OPTIONS[o] for o in offers if o in OFFER_OPTIONS) or (1,)
         remote = REMOTE_LABEL in offers
-        corridor = (("Heilbronn", radius), ("Stuttgart", max(10, radius - 10)), ("Baden-Württemberg", None))
+        corridor = ((HOME_POSTAL_CODE, radius), ("Stuttgart", max(10, radius - 10)), ("Baden-Württemberg", None))
         with st.spinner("Searching the corridor…"):
             try:
                 st.session_state.jobs = search_corridor(
@@ -244,7 +244,7 @@ with tab_jobs:
                   "location": j["location"], "type": j["offer_type"], "open": j["url"]} for j in jobs],
                 use_container_width=True, hide_index=True,
                 column_config={
-                    "km": st.column_config.NumberColumn("km", format="%d km"),
+                    "km": st.column_config.NumberColumn("km from home", format="%.1f km"),
                     "open": st.column_config.LinkColumn("open", display_text="Open ↗"),
                 })
 

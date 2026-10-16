@@ -11,6 +11,7 @@ semicolon-separated and really do union ("1;4;34" = ARBEIT + AUSBILDUNG + Traine
 from __future__ import annotations
 
 import base64
+import math
 import time
 import urllib.parse
 from typing import Any, Iterable, Optional
@@ -26,9 +27,15 @@ RETRIES = 2
 # 1 = ARBEIT, 2 = SELBSTAENDIGKEIT, 4 = AUSBILDUNG, 34 = PRAKTIKUM/Trainee
 DEFAULT_OFFER_TYPES = (1, 4, 34)
 
-# Search plan: the Heilbronn/Stuttgart corridor plus the whole state of
-# Baden-Württemberg. radius_km=None means a state-wide search (no umkreis).
-CORRIDOR = (("Heilbronn", 45), ("Stuttgart", 35), ("Baden-Württemberg", None))
+# Candidate's home base: postal code 74078 (Heilbronn). Every reported
+# distance is measured from here, not from whichever city a search used.
+HOME_POSTAL_CODE = "74078"
+HOME_LATLON = (49.1800320, 9.1425113)
+
+# Search plan: home plus the wider Stuttgart / Baden-Württemberg area for
+# coverage. NB: omitting umkreis does NOT mean "no limit" — the API then
+# defaults to 25 km, so radius_km is always passed for a real radius.
+CORRIDOR = ((HOME_POSTAL_CODE, 45), ("Stuttgart", 35), ("Baden-Württemberg", None))
 
 # The API's Homeoffice filter (arbeitszeit=ho) returns nothing, so remote jobs
 # are found by keyword instead.
@@ -130,10 +137,42 @@ def _distance(job: dict) -> float:
     return value if isinstance(value, (int, float)) else float("inf")
 
 
+def haversine_km(a: tuple[float, float], b: tuple[float, float]) -> float:
+    """Great-circle distance in km between two (lat, lon) points."""
+    r = 6371.0088
+    lat1, lon1 = a
+    lat2, lon2 = b
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    h = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return round(2 * r * math.asin(math.sqrt(h)), 1)
+
+
+def annotate_home_distance(
+    jobs: Iterable[dict], home: tuple[float, float] = HOME_LATLON
+) -> list[dict]:
+    """Set each job's `distance_km` to its distance from home.
+
+    The API's own `entfernung` is relative to the search city (and absent for
+    a state search), so it is replaced with a value measured from home. Jobs
+    without coordinates (e.g. remote) get None.
+    """
+    jobs = list(jobs)
+    for job in jobs:
+        lat, lon = job.get("lat"), job.get("lon")
+        if isinstance(lat, (int, float)) and isinstance(lon, (int, float)):
+            job["distance_km"] = haversine_km(home, (lat, lon))
+        else:
+            job["distance_km"] = None
+    return jobs
+
+
 def search_corridor(
     keyword: Optional[str] = None,
     corridor: Iterable[tuple[str, Optional[int]]] = CORRIDOR,
     remote: bool = False,
+    home: tuple[float, float] = HOME_LATLON,
     **kwargs: Any,
 ) -> list[dict]:
     """Search every corridor entry (plus remote when asked), deduped by id.
@@ -157,6 +196,7 @@ def search_corridor(
         remote_keyword = f"{keyword} {REMOTE_KEYWORD}".strip() if keyword else REMOTE_KEYWORD
         merge(search_once(keyword=remote_keyword, **kwargs))
 
+    annotate_home_distance(seen.values(), home=home)
     return sorted(seen.values(), key=_distance)
 
 
@@ -168,8 +208,12 @@ def enrich_jobs(
     for job in jobs if limit is None else jobs[:limit]:
         if not job.get("id") or job.get("description"):
             continue
+        # Details carry no `entfernung` and can even move the point, so keep
+        # the search-derived location/distance we already reported.
+        keep = {k: job.get(k) for k in ("lat", "lon", "distance_km")}
         try:
             job.update(get_job_details(job["id"], http=http))
+            job.update({k: v for k, v in keep.items() if v is not None})
         except Exception as exc:
             job["description_error"] = str(exc)
         if pause:
