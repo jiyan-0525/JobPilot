@@ -2,7 +2,13 @@
 import json
 from types import SimpleNamespace
 
-from resume_jobs.match import prefilter, profile_keywords, rank_jobs
+from resume_jobs.match import (
+    RANK_MAX_DESCRIPTION,
+    RANK_MAX_TOKENS,
+    prefilter,
+    profile_keywords,
+    rank_jobs,
+)
 
 PROFILE = {
     "name": "Alex Beispiel",
@@ -76,3 +82,26 @@ def test_rank_jobs_attaches_job_and_drops_unknown_ids():
     user = client.requests[0]["messages"][1]["content"]
     assert "CANDIDATE PROFILE" in user and "Data Engineer" in user
     assert "JOBS" in user and "Python Developer" in user
+
+
+def test_rank_jobs_keeps_request_under_free_tier_tpm():
+    """Free tier caps prompt + max_tokens at 8000 tokens/minute (HTTP 413)."""
+    jobs = [
+        {
+            "id": f"j{i}",
+            "title": f"Data Engineer {i}",
+            "occupation": "Data Engineer",
+            "description": "Python SQL Docker Spark Airflow " * 3000,  # deliberately huge
+        }
+        for i in range(8)
+    ]
+    client = FakeToolClient({"ranking": []})
+    rank_jobs(PROFILE, jobs, client=client, top_n=8, enrich=False)
+
+    prompt = client.requests[0]["messages"][1]["content"]
+    assert client.requests[0]["max_tokens"] == RANK_MAX_TOKENS
+    # rough token estimate (4 chars ≈ 1 token) must leave headroom under 8000
+    assert len(prompt) // 4 + RANK_MAX_TOKENS < 8000
+    # descriptions are truncated, not sent whole
+    raw = sum(len(job["description"]) for job in jobs)
+    assert len(prompt) < raw / 4

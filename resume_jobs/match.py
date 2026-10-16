@@ -14,6 +14,12 @@ from typing import Any, Iterable, Optional
 from resume_jobs.render import job_block, profile_block
 from resume_jobs.step import MODEL, run_step_tool
 
+# Groq's free tier caps a request at 8000 tokens/minute (prompt + max_tokens),
+# so the ranking context must stay small: keep descriptions short and the
+# completion budget modest.
+RANK_MAX_DESCRIPTION = 1000
+RANK_MAX_TOKENS = 2000
+
 RANKING_TOOL = {
     "type": "function",
     "function": {
@@ -116,12 +122,15 @@ def rank_jobs(
         ),
         context=[
             f"CANDIDATE PROFILE\n{profile_block(profile)}",
-            "JOBS\n" + "\n\n".join(job_block(job) for job in shortlist),
+            "JOBS\n"
+            + "\n\n".join(
+                job_block(job, max_description=RANK_MAX_DESCRIPTION) for job in shortlist
+            ),
         ],
         tool=RANKING_TOOL,
         client=client,
         model=model,
-        max_tokens=4000,
+        max_tokens=RANK_MAX_TOKENS,
     )
 
     by_id = {job["id"]: job for job in shortlist}
