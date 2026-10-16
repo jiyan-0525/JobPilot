@@ -208,9 +208,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-tabs = st.tabs(["1 · Resume", "2 · Jobs", "🎯 Fit check (JD)", "3 · Match",
-                "4 · Interview", "5 · Cover letter"])
-tab_resume, tab_jobs, tab_jd, tab_match, tab_interview, tab_cover = tabs
+tabs = st.tabs(["1 · Resume", "2 · Jobs", "3 · Match", "4 · Interview",
+                "5 · Cover letter", "🎯 Fit check (JD)"])
+tab_resume, tab_jobs, tab_match, tab_interview, tab_cover, tab_jd = tabs
 
 # ---- 1 · Resume -----------------------------------------------------------
 with tab_resume:
@@ -330,51 +330,6 @@ with tab_jobs:
             if c2.button("💾 Save jobs", use_container_width=True):
                 st.success(f"Saved: {save_jobs(jobs, keyword=keyword or 'jobs')}")
 
-# ---- 🎯 · Fit check: job description vs resume -----------------------------
-with tab_jd:
-    section("🎯", "Fit check — job description vs resume")
-    if not st.session_state.profile:
-        st.info("Run tab 1 (Resume) first — this compares the job description against "
-                "your parsed profile.")
-    else:
-        st.caption(f"Comparing against **{st.session_state.profile['name'] or 'your profile'}** "
-                   "— paste a job posting to see how well it matches.")
-        jd_text = st.text_area("Job description", height=200, key="jd_text",
-                               placeholder="Paste the full job advertisement here…")
-        if st.button("Analyze fit", type="primary", disabled=not jd_text.strip()):
-            with st.spinner("Comparing the job description with your resume…"):
-                try:
-                    st.session_state.fit_result = analyze_fit(st.session_state.profile, jd_text)
-                except Exception as exc:
-                    st.error(f"Failed: {exc}")
-
-        fit = st.session_state.fit_result
-        if fit:
-            m1, m2 = st.columns(2)
-            m1.metric("Fit score", f"{fit['score']:.0f} / 100")
-            m2.metric("Verdict", fit["verdict"] or "—")
-
-            c1, c2 = st.columns(2)
-            c1.markdown(
-                '<div class="kp-card">'
-                f'<div class="k">Matched ({len(fit["matched_skills"])})</div>'
-                f'<div class="s">{html.escape(", ".join(fit["matched_skills"]) or "—")}</div>'
-                "</div>",
-                unsafe_allow_html=True,
-            )
-            c2.markdown(
-                '<div class="kp-card">'
-                f'<div class="k">Missing ({len(fit["missing_skills"])})</div>'
-                f'<div class="s">{html.escape(", ".join(fit["missing_skills"]) or "—")}</div>'
-                "</div>",
-                unsafe_allow_html=True,
-            )
-
-            if fit["reason_de"]:
-                st.markdown(f"**🇩🇪 {fit['reason_de']}**")
-            if fit["reason_en"]:
-                st.markdown(f"**🇬🇧 {fit['reason_en']}**")
-
 # ---- 3 · Match ------------------------------------------------------------
 with tab_match:
     section("🎯", "Match")
@@ -480,3 +435,48 @@ with tab_cover:
             st.markdown(st.session_state.cover_en)
             st.download_button("⬇️ cover_letter_en.md", st.session_state.cover_en,
                                "cover_letter_en.md", "text/markdown")
+
+# ---- 🎯 · Fit check: job description vs resume -----------------------------
+with tab_jd:
+    section("🎯", "Fit check — job description vs resume")
+    if not st.session_state.profile:
+        st.info("Run tab 1 (Resume) first — this compares the job description against "
+                "your parsed profile.")
+    else:
+        st.caption(f"Comparing against **{st.session_state.profile['name'] or 'your profile'}** "
+                   "— paste a job posting to see how well it matches.")
+        jd_text = st.text_area("Job description", height=200, key="jd_text",
+                               placeholder="Paste the full job advertisement here…")
+        if st.button("Analyze fit", type="primary", disabled=not jd_text.strip()):
+            with st.spinner("Comparing the job description with your resume…"):
+                try:
+                    st.session_state.fit_result = analyze_fit(st.session_state.profile, jd_text)
+                except Exception as exc:
+                    st.error(f"Failed: {exc}")
+
+        fit = st.session_state.fit_result
+        if fit:
+            m1, m2 = st.columns(2)
+            m1.metric("Fit score", f"{fit['score']:.0f} / 100")
+            m2.metric("Verdict", fit["verdict"] or "—")
+
+            c1, c2 = st.columns(2)
+            c1.markdown(
+                '<div class="kp-card">'
+                f'<div class="k">Matched ({len(fit["matched_skills"])})</div>'
+                f'<div class="s">{html.escape(", ".join(fit["matched_skills"]) or "—")}</div>'
+                "</div>",
+                unsafe_allow_html=True,
+            )
+            c2.markdown(
+                '<div class="kp-card">'
+                f'<div class="k">Missing ({len(fit["missing_skills"])})</div>'
+                f'<div class="s">{html.escape(", ".join(fit["missing_skills"]) or "—")}</div>'
+                "</div>",
+                unsafe_allow_html=True,
+            )
+
+            if fit["reason_de"]:
+                st.markdown(f"**🇩🇪 {fit['reason_de']}**")
+            if fit["reason_en"]:
+                st.markdown(f"**🇬🇧 {fit['reason_en']}**")
