@@ -21,3 +21,9 @@ reicht/
 # OS
 .DS_Store
 Thumbs.db
+
+# 解析产物（profile JSON 等）
+data/
+
+# Streamlit secrets (local)
+.streamlit/secrets.toml
