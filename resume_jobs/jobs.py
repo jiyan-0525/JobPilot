@@ -173,14 +173,20 @@ def search_corridor(
     corridor: Iterable[tuple[str, Optional[int]]] = CORRIDOR,
     remote: bool = False,
     home: tuple[float, float] = HOME_LATLON,
+    include_arbeitnow: bool = False,
+    arbeitnow_pages: int = 3,
     **kwargs: Any,
 ) -> list[dict]:
     """Search every corridor entry (plus remote when asked), deduped by id.
 
     Remote has no location, so it is a nationwide keyword search: the API's
     Homeoffice filter (arbeitszeit=ho) returns no results.
+
+    `include_arbeitnow=True` merges Arbeitnow results in as a second source
+    (their ids are namespaced `arbeitnow:<slug>`, so they never collide).
     """
     seen: dict[str, dict] = {}
+    corridor = list(corridor)  # iterated twice below
 
     def merge(jobs: Iterable[dict]) -> None:
         for job in jobs:
@@ -196,6 +202,14 @@ def search_corridor(
         remote_keyword = f"{keyword} {REMOTE_KEYWORD}".strip() if keyword else REMOTE_KEYWORD
         merge(search_once(keyword=remote_keyword, **kwargs))
 
+    if include_arbeitnow:
+        from resume_jobs.arbeitnow import search as arbeitnow_search
+
+        # Arbeitnow has no geo filter; reuse the corridor's city names so results
+        # stay in the area (remote jobs are always kept).
+        locations = [str(loc) for loc, _ in corridor if not str(loc).isdigit()] + ["Heilbronn"]
+        merge(arbeitnow_search(keyword=keyword, locations=locations, max_pages=arbeitnow_pages))
+
     annotate_home_distance(seen.values(), home=home)
     return sorted(seen.values(), key=_distance)
 
@@ -206,6 +220,11 @@ def enrich_jobs(
     """Fetch descriptions for up to `limit` jobs, in place (details are one request each)."""
     http = http or requests.Session()
     for job in jobs if limit is None else jobs[:limit]:
+        # Only the Arbeitsagentur search leaves the description out, so only its
+        # jobs need (and support) a details request. Other sources already ship
+        # a description with the search result.
+        if job.get("source") != "arbeitsagentur":
+            continue
         if not job.get("id") or job.get("description"):
             continue
         # Details carry no `entfernung` and can even move the point, so keep

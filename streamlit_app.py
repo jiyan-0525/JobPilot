@@ -8,6 +8,7 @@ Run: .venv/bin/python -m streamlit run streamlit_app.py
 import html
 import json
 import sys
+from urllib.parse import quote
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -28,101 +29,135 @@ st.set_page_config(page_title="JobPilot", page_icon="🧭", layout="wide")
 st.markdown(
     """
     <style>
+      /* ---- palette ------------------------------------------------------- */
+      :root {
+        --kp-bg: #0b1220;
+        --kp-surface: rgba(148,163,184,.06);
+        --kp-surface-2: rgba(148,163,184,.10);
+        --kp-border: rgba(148,163,184,.18);
+        --kp-accent: #38bdf8;
+        --kp-accent-2: #818cf8;
+        --kp-text: #e2e8f0;
+        --kp-muted: #94a3b8;
+      }
+
       /* ---- layout -------------------------------------------------------- */
-      .block-container { padding-top: 1.3rem; padding-bottom: 3rem; max-width: 1180px; }
+      .stApp {
+        background:
+          radial-gradient(900px 520px at 102% -12%, rgba(56,189,248,.12), transparent 58%),
+          radial-gradient(760px 520px at -8% 6%, rgba(129,140,248,.12), transparent 55%),
+          var(--kp-bg);
+      }
+      .block-container { padding-top: 1.4rem; padding-bottom: 3rem; max-width: 1180px; }
       #MainMenu, header [data-testid="stToolbar"], footer { visibility: hidden; }
 
       /* ---- hero ---------------------------------------------------------- */
       .kp-hero {
         position: relative; overflow: hidden; color: #fff;
         background:
-          radial-gradient(1100px 380px at 88% -30%, rgba(56,189,248,.55), transparent 60%),
-          linear-gradient(120deg, #0b2a6b 0%, #1e40af 42%, #2563eb 72%, #0ea5e9 100%);
-        padding: 2rem 2.1rem 1.7rem; border-radius: 22px;
-        box-shadow: 0 22px 45px -18px rgba(37,99,235,.65);
-        margin-bottom: 1.4rem;
+          radial-gradient(1100px 400px at 88% -30%, rgba(56,189,248,.50), transparent 62%),
+          linear-gradient(120deg, #0b1a3a 0%, #1e2a78 40%, #4338ca 72%, #0ea5e9 100%);
+        padding: 2.05rem 2.15rem 1.85rem; border-radius: 24px;
+        border: 1px solid rgba(148,197,255,.24);
+        box-shadow:
+          0 34px 70px -34px rgba(56,189,248,.55),
+          inset 0 1px 0 rgba(255,255,255,.16);
+        margin-bottom: 1.5rem;
+      }
+      .kp-hero::after {
+        content: ""; position: absolute; right: -70px; top: -70px;
+        width: 240px; height: 240px; border-radius: 50%;
+        background: radial-gradient(circle, rgba(125,211,252,.42), transparent 68%);
+        filter: blur(4px); pointer-events: none;
       }
       .kp-hero h1 {
-        margin: 0; font-size: 2.05rem; font-weight: 800; color: #fff;
-        letter-spacing: -.02em;
+        margin: 0; font-size: 2.1rem; font-weight: 800; color: #fff;
+        letter-spacing: -.02em; text-shadow: 0 2px 18px rgba(8,20,45,.55);
       }
-      .kp-hero p { margin: .5rem 0 0; opacity: .95; font-size: 1rem; }
-      .kp-chips { margin-top: .95rem; }
+      .kp-hero p { margin: .55rem 0 0; opacity: .95; font-size: 1rem; color: #dbeafe; }
+      .kp-chips { margin-top: 1.05rem; display: flex; flex-wrap: wrap; gap: .45rem; }
       .kp-chip {
         display: inline-flex; align-items: center; gap: .35rem;
-        background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.32);
-        padding: 4px 13px; border-radius: 999px; font-size: .78rem; font-weight: 600;
-        margin: 0 .4rem .4rem 0;
+        background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.28);
+        padding: 5px 14px; border-radius: 999px; font-size: .78rem; font-weight: 600;
       }
+      .kp-chip.done {
+        background: rgba(56,189,248,.20); border-color: rgba(125,211,252,.65); color: #e0f2fe;
+      }
+      .kp-chip.active {
+        background: rgba(129,140,248,.26); border-color: #a5b4fc; color: #fff;
+        box-shadow: 0 0 0 4px rgba(129,140,248,.16);
+      }
+      .kp-chip.idle { opacity: .5; }
 
       /* ---- section header ------------------------------------------------ */
-      .kp-section { display: flex; align-items: center; gap: .65rem; margin: .3rem 0 1rem; }
+      .kp-section { display: flex; align-items: center; gap: .7rem; margin: .3rem 0 1.05rem; }
       .kp-section .bar {
-        width: 5px; height: 1.35rem; border-radius: 999px;
-        background: linear-gradient(#2563eb, #0ea5e9);
+        width: 5px; height: 1.4rem; border-radius: 999px;
+        background: linear-gradient(var(--kp-accent-2), var(--kp-accent));
+        box-shadow: 0 0 16px rgba(56,189,248,.7);
       }
-      .kp-section h2 { margin: 0; font-size: 1.22rem; font-weight: 700; color: #0f172a; }
+      .kp-section h2 { margin: 0; font-size: 1.24rem; font-weight: 700; color: var(--kp-text); }
 
       /* ---- cards --------------------------------------------------------- */
       .kp-card {
-        background: #fff; border: 1px solid #e6ebf4; border-radius: 16px;
+        background: var(--kp-surface); border: 1px solid var(--kp-border); border-radius: 16px;
         padding: 1rem 1.15rem; height: 100%;
-        box-shadow: 0 8px 22px -16px rgba(15,23,42,.45);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 12px 32px -24px rgba(0,0,0,.9);
       }
       .kp-card .k {
-        color: #64748b; font-size: .74rem; font-weight: 700;
+        color: var(--kp-muted); font-size: .74rem; font-weight: 700;
         text-transform: uppercase; letter-spacing: .07em;
       }
-      .kp-card .s { color: #475569; font-size: .88rem; margin-top: .15rem; line-height: 1.5; }
+      .kp-card .s { color: #cbd5e1; font-size: .88rem; margin-top: .15rem; line-height: 1.55; }
 
       /* ---- widgets ------------------------------------------------------- */
       .stButton > button, .stDownloadButton > button, .stLinkButton > a {
-        border-radius: 12px; font-weight: 600;
-        transition: transform .08s ease, box-shadow .15s ease;
+        border-radius: 12px; font-weight: 600; color: var(--kp-text);
+        background: var(--kp-surface-2); border: 1px solid var(--kp-border);
+        transition: transform .08s ease, box-shadow .15s ease, border-color .15s ease;
       }
       .stButton > button:hover, .stDownloadButton > button:hover, .stLinkButton > a:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 10px 22px -12px rgba(37,99,235,.75);
+        transform: translateY(-1px); border-color: var(--kp-accent);
+        box-shadow: 0 12px 28px -14px rgba(56,189,248,.65);
+      }
+      .stButton > button[kind="primary"] {
+        background: linear-gradient(120deg, #2563eb, #0ea5e9); border: none; color: #fff;
+        box-shadow: 0 14px 30px -16px rgba(56,189,248,.85);
       }
       div[data-testid="stMetric"] {
-        background: #fff; border: 1px solid #e6ebf4; border-radius: 16px;
-        padding: .8rem 1rem; box-shadow: 0 8px 22px -18px rgba(15,23,42,.5);
+        background: var(--kp-surface); border: 1px solid var(--kp-border); border-radius: 16px;
+        padding: .8rem 1rem; backdrop-filter: blur(10px);
+        box-shadow: 0 12px 30px -26px rgba(0,0,0,.9);
       }
-      [data-testid="stMetricValue"] { font-weight: 800; color: #1e3a8a; }
-      [data-testid="stMetricLabel"] { color: #64748b; font-weight: 600; }
+      [data-testid="stMetricValue"] { font-weight: 800; color: #7dd3fc; }
+      [data-testid="stMetricLabel"] { color: var(--kp-muted); font-weight: 600; }
 
       div[data-testid="stFileUploader"] section,
-      div[data-testid="stExpander"] details {
-        border-radius: 14px; border-color: #e6ebf4;
+      div[data-testid="stExpander"] details,
+      div[data-testid="stDataFrame"] {
+        border-radius: 14px; border: 1px solid var(--kp-border);
+        background: var(--kp-surface);
+      }
+      div[data-testid="stTextArea"] textarea, div[data-testid="stTextInput"] input,
+      div[data-baseweb="select"] > div {
+        border-radius: 10px; border-color: var(--kp-border);
+        background: rgba(148,163,184,.06);
       }
 
       /* ---- tabs ---------------------------------------------------------- */
-      .stTabs [data-baseweb="tab-list"] { gap: 8px; border-bottom: 1px solid #e6ebf4; }
+      .stTabs [data-baseweb="tab-list"] { gap: 8px; border-bottom: 1px solid var(--kp-border); }
       .stTabs [data-baseweb="tab"] {
-        border-radius: 12px 12px 0 0; padding: 8px 18px; font-weight: 600; color: #475569;
+        border-radius: 12px 12px 0 0; padding: 8px 18px; font-weight: 600; color: var(--kp-muted);
       }
-      .stTabs [aria-selected="true"] { color: #1d4ed8; }
+      .stTabs [aria-selected="true"] { color: #7dd3fc; }
+      .stTabs [data-baseweb="tab-highlight"] { background-color: var(--kp-accent); }
+      .stTabs [data-baseweb="tab-border"] { background: transparent; }
     </style>
     """,
     unsafe_allow_html=True,
 )
-
-st.markdown(
-    """
-    <div class="kp-hero">
-      <h1>🧭 JobPilot</h1>
-      <p>Resume → Jobs → Match → Interview → Cover letter &nbsp;·&nbsp;
-         Heilbronn · Stuttgart · Baden-Württemberg · Remote &nbsp;·&nbsp; German + English</p>
-      <div class="kp-chips">
-        <span class="kp-chip">1 · Parse</span><span class="kp-chip">2 · Search</span>
-        <span class="kp-chip">3 · Match</span><span class="kp-chip">4 · Interview</span>
-        <span class="kp-chip">5 · Cover letter</span>
-      </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
 
 def section(icon, title):
     """A small accented heading shown at the top of each tab."""
@@ -137,8 +172,40 @@ OFFER_OPTIONS = {"Full-time (ARBEIT)": 1, "Vocational (AUSBILDUNG)": 4, "Interns
 REMOTE_LABEL = "Remote / Homeoffice"
 PUBLISHED_OPTIONS = {"Any time": None, "Last 7 days": 7, "Last 30 days": 30}
 
+
+def glassdoor_url(keyword: str) -> str:
+    """Deep link into Glassdoor's German job search (no public API available)."""
+    return "https://www.glassdoor.de/Job/jobs.htm?sc.keyword=" + quote(keyword or "")
+
 for key in ("profile", "jobs", "ranked", "job", "interview_md", "cover_de", "cover_en"):
     st.session_state.setdefault(key, None)
+
+_ss = st.session_state
+_steps = [
+    ("1 · Parse", bool(_ss.profile)),
+    ("2 · Search", bool(_ss.jobs)),
+    ("3 · Match", bool(_ss.ranked or _ss.job)),
+    ("4 · Interview", bool(_ss.interview_md)),
+    ("5 · Cover letter", bool(_ss.cover_de or _ss.cover_en)),
+]
+_first_open = next((i for i, (_, done) in enumerate(_steps) if not done), None)
+_chips = "".join(
+    f'<span class="kp-chip '
+    f'{"done" if done else ("active" if i == _first_open else "idle")}">'
+    f'{"✓ " if done else ""}{label}</span>'
+    for i, (label, done) in enumerate(_steps)
+)
+st.markdown(
+    f"""
+    <div class="kp-hero">
+      <h1>🧭 JobPilot</h1>
+      <p>Resume → Jobs → Match → Interview → Cover letter &nbsp;·&nbsp;
+         Heilbronn · Stuttgart · Baden-Württemberg · Remote &nbsp;·&nbsp; German + English</p>
+      <div class="kp-chips">{_chips}</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 tabs = st.tabs(["1 · Resume", "2 · Jobs", "3 · Match", "4 · Interview", "5 · Cover letter"])
 tab_resume, tab_jobs, tab_match, tab_interview, tab_cover = tabs
@@ -214,8 +281,13 @@ with tab_jobs:
                               default=list(OFFER_OPTIONS) + [REMOTE_LABEL])
     radius = col3.slider("Radius (km per city)", 10, 80, 45)
     published = st.selectbox("Published within", list(PUBLISHED_OPTIONS))
+    include_arbeitnow = st.checkbox("Also search Arbeitnow (second source, no key)", value=True)
 
-    if st.button("Search jobs", type="primary"):
+    search_col, gl_col = st.columns([3, 1])
+    search_clicked = search_col.button("Search jobs", type="primary", use_container_width=True)
+    gl_col.link_button("🌐 Glassdoor", glassdoor_url(keyword), use_container_width=True)
+
+    if search_clicked:
         offer_types = tuple(OFFER_OPTIONS[o] for o in offers if o in OFFER_OPTIONS) or (1,)
         remote = REMOTE_LABEL in offers
         corridor = ((HOME_POSTAL_CODE, radius), ("Stuttgart", max(10, radius - 10)), ("Baden-Württemberg", None))
@@ -223,7 +295,8 @@ with tab_jobs:
             try:
                 st.session_state.jobs = search_corridor(
                     keyword=keyword or None, corridor=corridor, remote=remote, offer_types=offer_types,
-                    published_within=PUBLISHED_OPTIONS[published], size=50)
+                    published_within=PUBLISHED_OPTIONS[published], size=50,
+                    include_arbeitnow=include_arbeitnow)
                 st.session_state.ranked = None
                 st.session_state.job = None
             except Exception as exc:
@@ -240,8 +313,9 @@ with tab_jobs:
             m3.metric("Cities", len({j["location"] for j in jobs if j["location"]}))
 
             st.dataframe(
-                [{"km": j["distance_km"], "title": j["title"], "company": j["company"],
-                  "location": j["location"], "type": j["offer_type"], "open": j["url"]} for j in jobs],
+                [{"source": j.get("source", ""), "km": j["distance_km"], "title": j["title"],
+                  "company": j["company"], "location": j["location"], "type": j["offer_type"],
+                  "open": j["url"]} for j in jobs],
                 use_container_width=True, hide_index=True,
                 column_config={
                     "km": st.column_config.NumberColumn("km from home", format="%.1f km"),
