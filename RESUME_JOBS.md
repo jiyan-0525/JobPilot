@@ -1,4 +1,4 @@
-# KarrierePilot — Design & Roadmap
+# JobPilot — Design & Roadmap
 
 Resume → Jobs → Interview for the **Heilbronn Baden-Württemberg** corridor, bilingual (German + English),
 built on Groq + GPT-OSS 120B.

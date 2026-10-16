@@ -1,10 +1,11 @@
-"""KarrierePilot — the whole flow in one Streamlit app.
+"""JobPilot — the whole flow in one Streamlit app.
 
 Tabs: Resume → Jobs → Match → Interview → Cover letter.
 Each step reuses the `resume_jobs` library; state is carried in session_state.
 
 Run: .venv/bin/python -m streamlit run streamlit_app.py
 """
+import html
 import json
 import sys
 
@@ -22,32 +23,85 @@ from resume_jobs.store import save_jobs, save_profile  # noqa: E402
 
 load_dotenv()
 
-st.set_page_config(page_title="KarrierePilot", page_icon="🧭", layout="wide")
+st.set_page_config(page_title="JobPilot", page_icon="🧭", layout="wide")
 
 st.markdown(
     """
     <style>
-      .block-container { padding-top: 1.6rem; }
+      /* ---- layout -------------------------------------------------------- */
+      .block-container { padding-top: 1.3rem; padding-bottom: 3rem; max-width: 1180px; }
+      #MainMenu, header [data-testid="stToolbar"], footer { visibility: hidden; }
+
+      /* ---- hero ---------------------------------------------------------- */
       .kp-hero {
-        background: linear-gradient(120deg, #1e3a8a 0%, #2563eb 55%, #0ea5e9 100%);
-        padding: 1.5rem 1.7rem; border-radius: 18px; color: #fff;
-        box-shadow: 0 10px 28px rgba(37, 99, 235, .28); margin-bottom: 1.1rem;
+        position: relative; overflow: hidden; color: #fff;
+        background:
+          radial-gradient(1100px 380px at 88% -30%, rgba(56,189,248,.55), transparent 60%),
+          linear-gradient(120deg, #0b2a6b 0%, #1e40af 42%, #2563eb 72%, #0ea5e9 100%);
+        padding: 2rem 2.1rem 1.7rem; border-radius: 22px;
+        box-shadow: 0 22px 45px -18px rgba(37,99,235,.65);
+        margin-bottom: 1.4rem;
       }
-      .kp-hero h1 { margin: 0; font-size: 1.75rem; font-weight: 800; color: #fff; }
-      .kp-hero p  { margin: .4rem 0 0; opacity: .93; font-size: .95rem; }
+      .kp-hero h1 {
+        margin: 0; font-size: 2.05rem; font-weight: 800; color: #fff;
+        letter-spacing: -.02em;
+      }
+      .kp-hero p { margin: .5rem 0 0; opacity: .95; font-size: 1rem; }
+      .kp-chips { margin-top: .95rem; }
       .kp-chip {
-        display: inline-block; background: rgba(255,255,255,.16);
-        border: 1px solid rgba(255,255,255,.28); padding: 2px 11px;
-        border-radius: 999px; font-size: .78rem; margin: .55rem .35rem 0 0;
+        display: inline-flex; align-items: center; gap: .35rem;
+        background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.32);
+        padding: 4px 13px; border-radius: 999px; font-size: .78rem; font-weight: 600;
+        margin: 0 .4rem .4rem 0;
       }
-      .stButton > button { border-radius: 10px; font-weight: 600; }
-      .stDownloadButton > button { border-radius: 10px; }
-      .stTabs [data-baseweb="tab-list"] { gap: 6px; }
-      .stTabs [data-baseweb="tab"] {
-        border-radius: 10px 10px 0 0; padding: 7px 16px; font-weight: 600;
+
+      /* ---- section header ------------------------------------------------ */
+      .kp-section { display: flex; align-items: center; gap: .65rem; margin: .3rem 0 1rem; }
+      .kp-section .bar {
+        width: 5px; height: 1.35rem; border-radius: 999px;
+        background: linear-gradient(#2563eb, #0ea5e9);
+      }
+      .kp-section h2 { margin: 0; font-size: 1.22rem; font-weight: 700; color: #0f172a; }
+
+      /* ---- cards --------------------------------------------------------- */
+      .kp-card {
+        background: #fff; border: 1px solid #e6ebf4; border-radius: 16px;
+        padding: 1rem 1.15rem; height: 100%;
+        box-shadow: 0 8px 22px -16px rgba(15,23,42,.45);
+      }
+      .kp-card .k {
+        color: #64748b; font-size: .74rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: .07em;
+      }
+      .kp-card .s { color: #475569; font-size: .88rem; margin-top: .15rem; line-height: 1.5; }
+
+      /* ---- widgets ------------------------------------------------------- */
+      .stButton > button, .stDownloadButton > button, .stLinkButton > a {
+        border-radius: 12px; font-weight: 600;
+        transition: transform .08s ease, box-shadow .15s ease;
+      }
+      .stButton > button:hover, .stDownloadButton > button:hover, .stLinkButton > a:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 22px -12px rgba(37,99,235,.75);
+      }
+      div[data-testid="stMetric"] {
+        background: #fff; border: 1px solid #e6ebf4; border-radius: 16px;
+        padding: .8rem 1rem; box-shadow: 0 8px 22px -18px rgba(15,23,42,.5);
       }
       [data-testid="stMetricValue"] { font-weight: 800; color: #1e3a8a; }
-      .kp-muted { color: #64748b; font-size: .85rem; }
+      [data-testid="stMetricLabel"] { color: #64748b; font-weight: 600; }
+
+      div[data-testid="stFileUploader"] section,
+      div[data-testid="stExpander"] details {
+        border-radius: 14px; border-color: #e6ebf4;
+      }
+
+      /* ---- tabs ---------------------------------------------------------- */
+      .stTabs [data-baseweb="tab-list"] { gap: 8px; border-bottom: 1px solid #e6ebf4; }
+      .stTabs [data-baseweb="tab"] {
+        border-radius: 12px 12px 0 0; padding: 8px 18px; font-weight: 600; color: #475569;
+      }
+      .stTabs [aria-selected="true"] { color: #1d4ed8; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -56,18 +110,31 @@ st.markdown(
 st.markdown(
     """
     <div class="kp-hero">
-      <h1>🧭 KarrierePilot</h1>
+      <h1>🧭 JobPilot</h1>
       <p>Resume → Jobs → Match → Interview → Cover letter &nbsp;·&nbsp;
-         Heilbronn Baden-Württemberg &nbsp;·&nbsp; German + English</p>
-      <span class="kp-chip">1 Parse</span><span class="kp-chip">2 Search</span>
-      <span class="kp-chip">3 Match</span><span class="kp-chip">4 Interview</span>
-      <span class="kp-chip">5 Cover letter</span>
+         Heilbronn · Stuttgart · Baden-Württemberg · Remote &nbsp;·&nbsp; German + English</p>
+      <div class="kp-chips">
+        <span class="kp-chip">1 · Parse</span><span class="kp-chip">2 · Search</span>
+        <span class="kp-chip">3 · Match</span><span class="kp-chip">4 · Interview</span>
+        <span class="kp-chip">5 · Cover letter</span>
+      </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
+
+def section(icon, title):
+    """A small accented heading shown at the top of each tab."""
+    st.markdown(
+        f'<div class="kp-section"><span class="bar"></span><h2>{icon} {title}</h2></div>',
+        unsafe_allow_html=True,
+    )
+
 OFFER_OPTIONS = {"Full-time (ARBEIT)": 1, "Vocational (AUSBILDUNG)": 4, "Internship/Trainee": 34}
+# Remote is not an Angebotsart: the API's Homeoffice filter returns nothing, so
+# it is handled as an extra nationwide keyword search (see search_corridor).
+REMOTE_LABEL = "Remote / Homeoffice"
 PUBLISHED_OPTIONS = {"Any time": None, "Last 7 days": 7, "Last 30 days": 30}
 
 for key in ("profile", "jobs", "ranked", "job", "interview_md", "cover_de", "cover_en"):
@@ -78,6 +145,7 @@ tab_resume, tab_jobs, tab_match, tab_interview, tab_cover = tabs
 
 # ---- 1 · Resume -----------------------------------------------------------
 with tab_resume:
+    section("📄", "Resume")
     uploaded = st.file_uploader("Upload resume PDF", type=["pdf"])
     pasted = st.text_area("…or paste the resume text", height=130)
 
@@ -108,10 +176,16 @@ with tab_resume:
         m2.metric("Technical skills", len(skills))
         m3.metric("Languages", len(profile["languages"]))
 
-        with st.container(border=True):
-            st.markdown(f"**Target roles**  \n{roles}")
-            st.markdown(f"**Skills**  \n{', '.join(skills) or '—'}")
-            st.markdown(f"**Languages**  \n{languages}")
+        st.markdown(
+            f'<div class="kp-card">'
+            f'<div class="k">Target roles</div><div class="s">{html.escape(roles)}</div>'
+            f'<div class="k" style="margin-top:.75rem">Skills</div>'
+            f'<div class="s">{html.escape(", ".join(skills) or "—")}</div>'
+            f'<div class="k" style="margin-top:.75rem">Languages</div>'
+            f'<div class="s">{html.escape(languages)}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
         with st.expander("Full profile"):
             st.text(profile_block(profile))
@@ -124,6 +198,7 @@ with tab_resume:
 
 # ---- 2 · Jobs -------------------------------------------------------------
 with tab_jobs:
+    section("🔎", "Jobs")
     roles = (st.session_state.profile or {}).get("target_roles") or []
 
     col1, col2, col3 = st.columns([2, 2, 1])
@@ -135,17 +210,19 @@ with tab_jobs:
         else:
             keyword = st.text_input("Keyword / role", value="Data Engineer")
             st.caption("Tip: run tab 1 first — the search then uses your profile's target roles.")
-    offers = col2.multiselect("Job types", list(OFFER_OPTIONS), default=list(OFFER_OPTIONS))
+    offers = col2.multiselect("Job types", list(OFFER_OPTIONS) + [REMOTE_LABEL],
+                              default=list(OFFER_OPTIONS) + [REMOTE_LABEL])
     radius = col3.slider("Radius (km per city)", 10, 80, 45)
     published = st.selectbox("Published within", list(PUBLISHED_OPTIONS))
 
     if st.button("Search jobs", type="primary"):
-        offer_types = tuple(OFFER_OPTIONS[o] for o in offers) or (1,)
-        corridor = (("Heilbronn", radius), ("Stuttgart", max(10, radius - 10)))
+        offer_types = tuple(OFFER_OPTIONS[o] for o in offers if o in OFFER_OPTIONS) or (1,)
+        remote = REMOTE_LABEL in offers
+        corridor = (("Heilbronn", radius), ("Stuttgart", max(10, radius - 10)), ("Baden-Württemberg", None))
         with st.spinner("Searching the corridor…"):
             try:
                 st.session_state.jobs = search_corridor(
-                    keyword=keyword or None, corridor=corridor, offer_types=offer_types,
+                    keyword=keyword or None, corridor=corridor, remote=remote, offer_types=offer_types,
                     published_within=PUBLISHED_OPTIONS[published], size=50)
                 st.session_state.ranked = None
                 st.session_state.job = None
@@ -179,6 +256,7 @@ with tab_jobs:
 
 # ---- 3 · Match ------------------------------------------------------------
 with tab_match:
+    section("🎯", "Match")
     if not st.session_state.profile or not st.session_state.jobs:
         st.info("Run tabs 1 (resume) and 2 (jobs) first.")
     else:
@@ -217,6 +295,7 @@ with tab_match:
 
 # ---- 4 · Interview --------------------------------------------------------
 with tab_interview:
+    section("🗣️", "Interview")
     if not st.session_state.profile or not st.session_state.job:
         st.info("Complete tabs 1–3 to pick a target job.")
     else:
@@ -237,6 +316,7 @@ with tab_interview:
 
 # ---- 5 · Cover letter -----------------------------------------------------
 with tab_cover:
+    section("✉️", "Cover letter")
     if not st.session_state.profile or not st.session_state.job:
         st.info("Complete tabs 1–3 to pick a target job.")
     else:

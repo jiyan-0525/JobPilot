@@ -1,10 +1,15 @@
 [theme]
 base = "light"
 primaryColor = "#2563eb"
-backgroundColor = "#f6f8fc"
+backgroundColor = "#f4f7fc"
 secondaryBackgroundColor = "#ffffff"
 textColor = "#0f172a"
+linkColor = "#1d4ed8"
+borderColor = "#e6ebf4"
 font = "sans serif"
+baseFontSize = 15
+baseRadius = "0.85rem"
+buttonRadius = "0.75rem"
 
 [server]
 headless = true

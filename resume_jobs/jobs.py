@@ -26,8 +26,13 @@ RETRIES = 2
 # 1 = ARBEIT, 2 = SELBSTAENDIGKEIT, 4 = AUSBILDUNG, 34 = PRAKTIKUM/Trainee
 DEFAULT_OFFER_TYPES = (1, 4, 34)
 
-# Heilbronn Baden-Württemberg corridor: two radius searches, merged and deduped.
-CORRIDOR = (("Heilbronn", 45), ("Stuttgart", 35))
+# Search plan: the Heilbronn/Stuttgart corridor plus the whole state of
+# Baden-Württemberg. radius_km=None means a state-wide search (no umkreis).
+CORRIDOR = (("Heilbronn", 45), ("Stuttgart", 35), ("Baden-Württemberg", None))
+
+# The API's Homeoffice filter (arbeitszeit=ho) returns nothing, so remote jobs
+# are found by keyword instead.
+REMOTE_KEYWORD = "Homeoffice"
 
 
 def _csv(values: Any) -> str:
@@ -97,7 +102,8 @@ def search_once(
         params["was"] = keyword
     if location:
         params["wo"] = location
-        params["umkreis"] = radius_km
+        if radius_km:
+            params["umkreis"] = radius_km
     if worktime:
         params["arbeitszeit"] = _csv(worktime)
     if published_within:
@@ -126,17 +132,31 @@ def _distance(job: dict) -> float:
 
 def search_corridor(
     keyword: Optional[str] = None,
-    corridor: Iterable[tuple[str, int]] = CORRIDOR,
+    corridor: Iterable[tuple[str, Optional[int]]] = CORRIDOR,
+    remote: bool = False,
     **kwargs: Any,
 ) -> list[dict]:
-    """Search every city and merge results, deduped by id (smallest distance kept)."""
+    """Search every corridor entry (plus remote when asked), deduped by id.
+
+    Remote has no location, so it is a nationwide keyword search: the API's
+    Homeoffice filter (arbeitszeit=ho) returns no results.
+    """
     seen: dict[str, dict] = {}
-    for location, radius in corridor:
-        for job in search_once(keyword=keyword, location=location, radius_km=radius, **kwargs):
+
+    def merge(jobs: Iterable[dict]) -> None:
+        for job in jobs:
             if not job["id"]:
                 continue
             if job["id"] not in seen or _closer(job, seen[job["id"]]):
                 seen[job["id"]] = job
+
+    for location, radius in corridor:
+        merge(search_once(keyword=keyword, location=location, radius_km=radius, **kwargs))
+
+    if remote:
+        remote_keyword = f"{keyword} {REMOTE_KEYWORD}".strip() if keyword else REMOTE_KEYWORD
+        merge(search_once(keyword=remote_keyword, **kwargs))
+
     return sorted(seen.values(), key=_distance)
 
 
@@ -158,9 +178,9 @@ def enrich_jobs(
 
 
 if __name__ == "__main__":
-    print("Job search demo — Heilbronn Baden-Württemberg corridor")
+    print("Job search demo — Heilbronn · Stuttgart · Baden-Württemberg (+ remote)")
     print("=" * 60)
-    results = search_corridor(keyword="Data Engineer", size=10)
+    results = search_corridor(keyword="Data Engineer", size=10, remote=True)
     print(f"Found {len(results)} unique jobs\n")
     for job in results[:10]:
         print(f"  [{job['distance_km']} km] {job['title']} @ {job['company']} ({job['location']})")

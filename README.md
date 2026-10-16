@@ -1,9 +1,9 @@
-# KarrierePilot
+# JobPilot
 
 **Resume → Jobs → Interview for the Heilbronn Baden-Württemberg corridor.**
 Bilingual (German + English), powered by Groq + GPT-OSS 120B.
 
-KarrierePilot reads your resume, finds matching jobs from Germany's official job
+JobPilot reads your resume, finds matching jobs from Germany's official job
 database in the Heilbronn Baden-Württemberg area, and (next) prepares a tailored
 interview for each role.
 
@@ -22,8 +22,8 @@ interview for each role.
 ## 🚀 Quick Start
 
 ```bash
-git clone git@github.com:jiyan-0525/KarrierePilot.git
-cd KarrierePilot
+git clone git@github.com:jiyan-0525/JobPilot.git
+cd JobPilot
 
 pip install -r requirements.txt
 # create .env with your Groq key (job search needs no key):
@@ -48,7 +48,7 @@ pip install -r requirements.txt
 ## 🏗️ Project Structure
 
 ```
-KarrierePilot/
+JobPilot/
 ├── resume_app.py           # Streamlit: resume → profile
 ├── jobs_app.py             # Streamlit: job search corridor
 ├── resume_jobs/

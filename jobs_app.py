@@ -14,15 +14,18 @@ from resume_jobs.store import save_jobs  # noqa: E402
 
 load_dotenv()
 
-st.set_page_config(page_title="KarrierePilot · Job Search", page_icon="🔎", layout="wide")
-st.title("🔎 Job Search — Heilbronn Baden-Württemberg")
-st.caption("KarrierePilot · Live listings from the Bundesagentur für Arbeit Jobsuche API (public, no key required).")
+st.set_page_config(page_title="JobPilot · Job Search", page_icon="🔎", layout="wide")
+st.title("🔎 Job Search — Heilbronn · Stuttgart · Baden-Württemberg")
+st.caption("JobPilot · Live listings from the Bundesagentur für Arbeit Jobsuche API (public, no key required).")
 
 OFFER_OPTIONS = {
     "Full-time (ARBEIT)": 1,
     "Vocational training (AUSBILDUNG)": 4,
     "Internship / Trainee": 34,
 }
+# Remote is not an Angebotsart: the API's Homeoffice filter returns nothing, so
+# it is handled as an extra nationwide keyword search (see search_corridor).
+REMOTE_LABEL = "Remote / Homeoffice"
 PUBLISHED_OPTIONS = {"Any time": None, "Last 7 days": 7, "Last 30 days": 30}
 
 if "jobs" not in st.session_state:
@@ -35,8 +38,9 @@ with st.form("search_form"):
     with col2:
         selected_offers = st.multiselect(
             "Job types",
-            list(OFFER_OPTIONS),
-            default=["Full-time (ARBEIT)", "Vocational training (AUSBILDUNG)", "Internship / Trainee"],
+            list(OFFER_OPTIONS) + [REMOTE_LABEL],
+            default=["Full-time (ARBEIT)", "Vocational training (AUSBILDUNG)",
+                     "Internship / Trainee", REMOTE_LABEL],
         )
     with col3:
         radius = st.slider("Radius (km per city)", 10, 80, 45)
@@ -45,13 +49,15 @@ with st.form("search_form"):
     submitted = st.form_submit_button("Search", type="primary")
 
 if submitted:
-    offer_types = tuple(OFFER_OPTIONS[label] for label in selected_offers) or (1,)
-    corridor = (("Heilbronn", radius), ("Stuttgart", max(10, radius - 10)))
+    offer_types = tuple(OFFER_OPTIONS[l] for l in selected_offers if l in OFFER_OPTIONS) or (1,)
+    remote = REMOTE_LABEL in selected_offers
+    corridor = (("Heilbronn", radius), ("Stuttgart", max(10, radius - 10)), ("Baden-Württemberg", None))
     with st.spinner("Searching the corridor..."):
         try:
             st.session_state.jobs = search_corridor(
                 keyword=keyword or None,
                 corridor=corridor,
+                remote=remote,
                 offer_types=offer_types,
                 published_within=PUBLISHED_OPTIONS[published_label],
                 size=50,

@@ -14,9 +14,9 @@ from resume_jobs.store import save_profile  # noqa: E402
 
 load_dotenv()
 
-st.set_page_config(page_title="KarrierePilot · Resume Parser", page_icon="📄", layout="wide")
+st.set_page_config(page_title="JobPilot · Resume Parser", page_icon="📄", layout="wide")
 st.title("📄 Resume Parser")
-st.caption("KarrierePilot · Upload a PDF resume → extract text → LLM-structured profile (German + English)")
+st.caption("JobPilot · Upload a PDF resume → extract text → LLM-structured profile (German + English)")
 
 if "profile" not in st.session_state:
     st.session_state.profile = None
