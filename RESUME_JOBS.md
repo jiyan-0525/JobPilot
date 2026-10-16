@@ -13,6 +13,7 @@ built on Groq + GPT-OSS 120B.
 | 2 Job search | profile → real job postings | `resume_jobs/jobs.py` (Bundesagentur für Arbeit Jobsuche API) | ✅ done |
 | 3 Matching | score/rank profile ∩ job description | `resume_jobs/match.py` (keyword prefilter + LLM ranking) | ✅ done |
 | 4 Interview prep | generate DE/EN interview questions for a job | `resume_jobs/interview.py` (LLM step; question-bank RAG optional) | ✅ done |
+| 5 Fit check | paste a JD → fit score + gaps → DE/EN learning plan | `resume_jobs/match.py` (`score_job`) + `resume_jobs/learning_plan.py` | ✅ done |
 
 Steps 3 and 4 are built on `resume_jobs/step.py`, a small **role + task + expected_output +
 context** step framing: `run_step` for prose, `run_step_tool` for structured output.
@@ -41,6 +42,7 @@ resume_jobs/
 ├── match.py            # rank_jobs (step 3)
 ├── interview.py        # prepare_interview (step 4)
 ├── cover_letter.py     # write_cover_letter (per language: de / en)
+├── learning_plan.py    # build_learning_plan (fit check → DE/EN study plan)
 └── store.py            # JSON persistence: save_profile / save_jobs
 rag.py                  # minimal RAG (question bank)
 tests/test_resume.py    # offline tests
@@ -196,6 +198,15 @@ write_cover_letter(profile, job, language="en")   # '## English (Cover letter)'
 One LLM step **per language** — German and English are generated separately, so each can be
 regenerated on its own. Each is grounded strictly in the resume (greeting/sign-off, opening,
 2-3 evidenced strengths matching the job, motivation, closing).
+
+### Fit check — `match.score_job` + `learning_plan.py`
+
+The tab after Cover letter in the multi-tab app (`streamlit_app.py`): resume upload/paste + pasted JD.
+`score_job(profile, job)` fit-checks one posting — it reuses
+`rank_jobs` on a single job (a `SINGLE_JOB_MAX_DESCRIPTION` budget keeps the full JD in context)
+and returns `{job_id, score, matched_skills, missing_skills, reason_de, reason_en}`. Those
+`missing_skills` then feed `build_learning_plan(profile, job, gaps=...)`, one LLM step producing a
+bilingual (DE/EN) study plan: prioritised gaps plus ordered, time-boxed learning steps.
 
 ## Usage
 

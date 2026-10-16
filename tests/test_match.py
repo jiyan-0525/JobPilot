@@ -2,12 +2,16 @@
 import json
 from types import SimpleNamespace
 
+import pytest
+
 from resume_jobs.match import (
     RANK_MAX_DESCRIPTION,
     RANK_MAX_TOKENS,
+    SINGLE_JOB_MAX_DESCRIPTION,
     prefilter,
     profile_keywords,
     rank_jobs,
+    score_job,
 )
 
 PROFILE = {
@@ -105,3 +109,42 @@ def test_rank_jobs_keeps_request_under_free_tier_tpm():
     # descriptions are truncated, not sent whole
     raw = sum(len(job["description"]) for job in jobs)
     assert len(prompt) < raw / 4
+
+
+def test_score_job_returns_single_fit_entry():
+    payload = {
+        "ranking": [
+            {"job_id": "jd", "score": 72, "matched_skills": ["Python"],
+             "missing_skills": ["Kubernetes"], "reason_de": "passt gut", "reason_en": "good fit"},
+        ]
+    }
+    client = FakeToolClient(payload)
+    job = {"id": "jd", "title": "Data Engineer", "description": "Python and Kubernetes"}
+    fit = score_job(PROFILE, job, client=client)
+
+    assert fit["score"] == 72
+    assert fit["missing_skills"] == ["Kubernetes"]
+    assert "job" not in fit  # the fit entry, not the ranked wrapper
+
+    # a single JD gets the larger description budget
+    user = client.requests[0]["messages"][1]["content"]
+    assert "Data Engineer" in user
+    assert SINGLE_JOB_MAX_DESCRIPTION > RANK_MAX_DESCRIPTION
+
+
+def test_score_job_defaults_missing_id():
+    payload = {
+        "ranking": [
+            {"job_id": "jd", "score": 40, "matched_skills": [], "missing_skills": [],
+             "reason_de": "d", "reason_en": "e"},
+        ]
+    }
+    client = FakeToolClient(payload)
+    fit = score_job(PROFILE, {"title": "X", "description": "y"}, client=client)
+    assert fit["score"] == 40
+
+
+def test_score_job_raises_when_no_result():
+    client = FakeToolClient({"ranking": []})
+    with pytest.raises(ValueError):
+        score_job(PROFILE, {"id": "jd", "title": "X"}, client=client)

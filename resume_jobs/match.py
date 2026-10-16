@@ -19,6 +19,8 @@ from resume_jobs.step import MODEL, run_step_tool
 # completion budget modest.
 RANK_MAX_DESCRIPTION = 1000
 RANK_MAX_TOKENS = 2000
+# A single pasted JD has room for its full text; the multi-job path must stay small.
+SINGLE_JOB_MAX_DESCRIPTION = 4000
 
 RANKING_TOOL = {
     "type": "function",
@@ -94,6 +96,7 @@ def rank_jobs(
     enrich: bool = True,
     http: Any = None,
     model: str = MODEL,
+    max_description: int = RANK_MAX_DESCRIPTION,
 ) -> list[dict]:
     """Return the ranked shortlist. Each item is the ranking entry plus its `job`.
 
@@ -124,7 +127,7 @@ def rank_jobs(
             f"CANDIDATE PROFILE\n{profile_block(profile)}",
             "JOBS\n"
             + "\n\n".join(
-                job_block(job, max_description=RANK_MAX_DESCRIPTION) for job in shortlist
+                job_block(job, max_description=max_description) for job in shortlist
             ),
         ],
         tool=RANKING_TOOL,
@@ -153,3 +156,32 @@ def rank_jobs(
             continue
         ranked.append({**entry, "job": job, "job_id": job["id"]})
     return ranked
+
+
+def score_job(
+    profile: dict,
+    job: dict,
+    client: Any = None,
+    model: str = MODEL,
+) -> dict:
+    """Fit-check a single job posting (e.g. an uploaded JD).
+
+    Wraps `rank_jobs` for one job and returns just the fit entry:
+    `{job_id, score, matched_skills, missing_skills, reason_de, reason_en}`.
+    A posting with no `id` gets the placeholder `"jd"` so the ranking can resolve it.
+    """
+    job = {**job, "id": job.get("id") or "jd"}
+    ranked = rank_jobs(
+        profile,
+        [job],
+        client=client,
+        top_n=1,
+        enrich=False,
+        model=model,
+        max_description=SINGLE_JOB_MAX_DESCRIPTION,
+    )
+    if not ranked:
+        raise ValueError("fit check returned no result for the job")
+    entry = dict(ranked[0])
+    entry.pop("job", None)
+    return entry

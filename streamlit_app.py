@@ -1,6 +1,6 @@
 """JobPilot — the whole flow in one Streamlit app.
 
-Tabs: Resume → Jobs → Match → Interview → Cover letter.
+Tabs: Resume → Jobs → Match → Interview → Cover letter → Fit check.
 Each step reuses the `resume_jobs` library; state is carried in session_state.
 
 Run: .venv/bin/python -m streamlit run streamlit_app.py
@@ -72,24 +72,11 @@ st.markdown(
         filter: blur(4px); pointer-events: none;
       }
       .kp-hero h1 {
-        margin: 0; font-size: 2.1rem; font-weight: 800; color: #fff;
+        margin: 0; font-size: 2.6rem; font-weight: 800; color: #fff;
         letter-spacing: -.02em; text-shadow: 0 2px 18px rgba(8,20,45,.55);
       }
-      .kp-hero p { margin: .55rem 0 0; opacity: .95; font-size: 1rem; color: #dbeafe; }
-      .kp-chips { margin-top: 1.05rem; display: flex; flex-wrap: wrap; gap: .45rem; }
-      .kp-chip {
-        display: inline-flex; align-items: center; gap: .35rem;
-        background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.28);
-        padding: 5px 14px; border-radius: 999px; font-size: .78rem; font-weight: 600;
-      }
-      .kp-chip.done {
-        background: rgba(56,189,248,.20); border-color: rgba(125,211,252,.65); color: #e0f2fe;
-      }
-      .kp-chip.active {
-        background: rgba(129,140,248,.26); border-color: #a5b4fc; color: #fff;
-        box-shadow: 0 0 0 4px rgba(129,140,248,.16);
-      }
-      .kp-chip.idle { opacity: .5; }
+      .kp-hero p { margin: .55rem 0 0; opacity: .95; font-size: 1.25rem; color: #dbeafe; }
+      .kp-flag { height: 1em; vertical-align: -0.12em; border-radius: 2px; }
 
       /* ---- section header ------------------------------------------------ */
       .kp-section { display: flex; align-items: center; gap: .7rem; margin: .3rem 0 1.05rem; }
@@ -132,7 +119,7 @@ st.markdown(
         padding: .8rem 1rem; backdrop-filter: blur(10px);
         box-shadow: 0 12px 30px -26px rgba(0,0,0,.9);
       }
-      [data-testid="stMetricValue"] { font-weight: 800; color: #7dd3fc; }
+      [data-testid="stMetricValue"] { font-weight: 800; font-size: 1.5rem; color: #7dd3fc; }
       [data-testid="stMetricLabel"] { color: var(--kp-muted); font-weight: 600; }
 
       div[data-testid="stFileUploader"] section,
@@ -147,14 +134,25 @@ st.markdown(
         background: rgba(148,163,184,.06);
       }
 
-      /* ---- tabs ---------------------------------------------------------- */
-      .stTabs [data-baseweb="tab-list"] { gap: 8px; border-bottom: 1px solid var(--kp-border); }
-      .stTabs [data-baseweb="tab"] {
-        border-radius: 12px 12px 0 0; padding: 8px 18px; font-weight: 600; color: var(--kp-muted);
+      /* ---- tabs (pill style) --------------------------------------------- */
+      .stTabs [data-baseweb="tab-list"] {
+        gap: 10px; border-bottom: none; flex-wrap: wrap;
       }
-      .stTabs [aria-selected="true"] { color: #7dd3fc; }
-      .stTabs [data-baseweb="tab-highlight"] { background-color: var(--kp-accent); }
-      .stTabs [data-baseweb="tab-border"] { background: transparent; }
+      .stTabs [data-baseweb="tab-highlight"],
+      .stTabs [data-baseweb="tab-border"] { display: none; }
+      .stTabs [data-baseweb="tab"] {
+        border-radius: 999px; padding: 6px 20px;
+        background: var(--kp-surface-2); border: 1px solid var(--kp-border); color: var(--kp-muted);
+      }
+      .stTabs [data-baseweb="tab"]:hover { border-color: var(--kp-accent); }
+      .stTabs [data-baseweb="tab"] p,
+      .stTabs [data-baseweb="tab"] div,
+      .stTabs [data-baseweb="tab"] span {
+        font-size: 1.15rem !important; font-weight: 800 !important; color: inherit !important;
+      }
+      .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background: var(--kp-accent); border-color: var(--kp-accent); color: #04121f;
+      }
     </style>
     """,
     unsafe_allow_html=True,
@@ -181,35 +179,20 @@ def glassdoor_url(keyword: str) -> str:
 for key in ("profile", "jobs", "ranked", "job", "interview_md", "cover_de", "cover_en", "fit_result"):
     st.session_state.setdefault(key, None)
 
-_ss = st.session_state
-_steps = [
-    ("1 · Parse", bool(_ss.profile)),
-    ("2 · Search", bool(_ss.jobs)),
-    ("3 · Match", bool(_ss.ranked or _ss.job)),
-    ("4 · Interview", bool(_ss.interview_md)),
-    ("5 · Cover letter", bool(_ss.cover_de or _ss.cover_en)),
-]
-_first_open = next((i for i, (_, done) in enumerate(_steps) if not done), None)
-_chips = "".join(
-    f'<span class="kp-chip '
-    f'{"done" if done else ("active" if i == _first_open else "idle")}">'
-    f'{"✓ " if done else ""}{label}</span>'
-    for i, (label, done) in enumerate(_steps)
-)
 st.markdown(
-    f"""
+    """
     <div class="kp-hero">
       <h1>🧭 JobPilot</h1>
-      <p>Resume → Jobs → Match → Interview → Cover letter &nbsp;·&nbsp;
-         Heilbronn · Stuttgart · Baden-Württemberg · Remote &nbsp;·&nbsp; German + English</p>
-      <div class="kp-chips">{_chips}</div>
+      <p>📄 Resume → 🔎 Jobs → 🎯 Match → 🗣️ Interview → ✉️ Cover letter &nbsp;·&nbsp;
+         <img class="kp-flag" src="https://flagcdn.com/w40/de.png" alt="DE"> +
+         <img class="kp-flag" src="https://flagcdn.com/w40/gb.png" alt="GB"></p>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-tabs = st.tabs(["1 · Resume", "2 · Jobs", "3 · Match", "4 · Interview",
-                "5 · Cover letter", "🎯 Fit check (JD)"])
+tabs = st.tabs(["📄 1 · Resume", "🔎 2 · Jobs", "🎯 3 · Match",
+                "🗣️ 4 · Interview", "✉️ 5 · Cover letter", "🧩 Fit check"])
 tab_resume, tab_jobs, tab_match, tab_interview, tab_cover, tab_jd = tabs
 
 # ---- 1 · Resume -----------------------------------------------------------
@@ -436,12 +419,11 @@ with tab_cover:
             st.download_button("⬇️ cover_letter_en.md", st.session_state.cover_en,
                                "cover_letter_en.md", "text/markdown")
 
-# ---- 🎯 · Fit check: job description vs resume -----------------------------
+# ---- 🧩 · Fit check: job description vs resume -----------------------------
 with tab_jd:
-    section("🎯", "Fit check — job description vs resume")
+    section("🧩", "Fit check")
     if not st.session_state.profile:
-        st.info("Run tab 1 (Resume) first — this compares the job description against "
-                "your parsed profile.")
+        st.info("Open the **📄 1 · Resume** tab first to parse your resume.")
     else:
         st.caption(f"Comparing against **{st.session_state.profile['name'] or 'your profile'}** "
                    "— paste a job posting to see how well it matches.")
@@ -452,7 +434,7 @@ with tab_jd:
                 try:
                     st.session_state.fit_result = analyze_fit(st.session_state.profile, jd_text)
                 except Exception as exc:
-                    st.error(f"Failed: {exc}")
+                    st.error(f"Fit check failed: {exc}")
 
         fit = st.session_state.fit_result
         if fit:
