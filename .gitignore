@@ -27,3 +27,4 @@ data/
 
 # Streamlit secrets (local)
 .streamlit/secrets.toml
+learning_plan.md
