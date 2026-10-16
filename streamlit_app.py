@@ -285,13 +285,23 @@ with tab_match:
                     "open": st.column_config.LinkColumn("open", display_text="Open ↗"),
                 })
 
-            labels = [f"{r['score']:.0f} · {r['job']['title']} @ {r['job']['company']}" for r in ranked]
-            idx = st.selectbox("Pick the target job", range(len(ranked)), format_func=lambda i: labels[i])
-            st.session_state.job = ranked[idx]["job"]
-            st.success(f"Target job selected — **{st.session_state.job['title']}** "
-                       f"@ {st.session_state.job['company']} (tabs 4 & 5)")
-            if st.session_state.job["url"]:
-                st.link_button("🔗 Open job posting", st.session_state.job["url"])
+        # Pick from every fetched job: the shortlist is just the top of the list,
+        # so a job the ranking skipped is still selectable.
+        scores = {r["job_id"]: r["score"] for r in (ranked or [])}
+        ordered = ([r["job"] for r in (ranked or [])]
+                   + [j for j in st.session_state.jobs if j["id"] not in scores])
+        labels = [
+            f"{scores[j['id']]:.0f} · {j['title']} @ {j['company']} — {j['location'] or '—'}"
+            if j["id"] in scores else
+            f"{j['title']} @ {j['company']} — {j['location'] or '—'}"
+            for j in ordered
+        ]
+        idx = st.selectbox("Pick the target job", range(len(ordered)), format_func=lambda i: labels[i])
+        st.session_state.job = ordered[idx]
+        st.success(f"Target job selected — **{st.session_state.job['title']}** "
+                   f"@ {st.session_state.job['company']} (tabs 4 & 5)")
+        if st.session_state.job["url"]:
+            st.link_button("🔗 Open job posting", st.session_state.job["url"])
 
 # ---- 4 · Interview --------------------------------------------------------
 with tab_interview:
