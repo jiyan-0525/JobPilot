@@ -84,7 +84,7 @@ pytest tests/
 ## ⚙️ Configuration & APIs
 
 - **Groq AI Engine** → Ultra-fast OpenAI-compatible inference with open-weights models.
-- **`GROQ_MODEL` Override** → Set to lighter models (e.g. `openai/gpt-oss-20b`) to bypass daily token caps on the free tier without modifying code.
+- **`GROQ_MODEL` Override** → Set to lighter models to bypass daily token caps on the free tier without modifying code.
 - **Bundesagentur für Arbeit Jobsuche API** → Official German employment service API (`X-API-Key: jobboerse-jobsuche`), free and public with no registration required.
 - **Arbeitnow API** → Integrated client available as a secondary job data source.
 
@@ -92,13 +92,12 @@ pytest tests/
 
 ## 🛠️ Tech Stack
 
-- **AI Engine**: Groq + GPT-OSS 120B (`openai/gpt-oss-120b`)
+- **Python**: 3.10+
+- **AI Engine**: Groq
 - **Web UI**: Streamlit
 - **PDF Extraction**: `pypdf`
-- **Job APIs**: Bundesagentur für Arbeit Jobsuche API & Arbeitnow
-- **Testing**: pytest (46 offline tests, no API key or network required)
 - **CI/CD**: GitHub Actions
-- **Python**: 3.10+
+- **Testing**: pytest (no API key or network required)
 
 ---
 
