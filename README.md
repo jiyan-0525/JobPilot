@@ -2,8 +2,8 @@
 
 # 🧭 JobPilot
 
-**From Resume to Interview — Tailored for the Heilbronn & Baden-Württemberg.**  
-*German & English • Powered by Groq*
+**From Resume to Interview — Tailored for the German Job Market (Focus on Baden-Württemberg).**  
+*Bilingual (German & English) • Powered by Groq*
 
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB.svg?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![AI Engine](https://img.shields.io/badge/AI%20Engine-Groq-f55036.svg?style=flat-square)](https://groq.com)
@@ -16,7 +16,7 @@
 
 </div>
 
-JobPilot is an end-to-end career copilot designed for job seekers in the Heilbronn and Baden-Württemberg region. It parses your PDF resume, discovers live listings directly from Germany's official **Bundesagentur für Arbeit** database, runs an instant Fit Check on any job description (scoring CV-vs-JD alignment, identifying skill gaps, and generating targeted learning plans), and prepares tailored interview strategies and cover letters.
+JobPilot is an end-to-end career copilot designed for the German tech job market (optimized for the Baden-Württemberg corridor). It parses your PDF resume, discovers live listings directly from Germany's official **Bundesagentur für Arbeit** database, runs an instant Fit Check on any job description (scoring CV-vs-JD alignment, identifying skill gaps, and generating targeted learning plans), and prepares tailored interview strategies and cover letters.
 
 
 
@@ -26,7 +26,7 @@ JobPilot is an end-to-end career copilot designed for job seekers in the Heilbro
 | Step | Feature | Interface |
 |:---:|---|---|
 | 1 | **Resume Parser** — PDF → structured profile (DE + EN) | `resume_app.py` |
-| 2 | **Job Search** — live listings in the Heilbronn & Baden-Württemberg corridor | `jobs_app.py` |
+| 2 | **Job Search** — live listings in Baden-Württemberg (Heilbronn, Stuttgart & beyond) | `jobs_app.py` |
 | 3 | **Smart Match** — rank jobs against the candidate profile with DE/EN rationale | Library (`resume_jobs.match`) |
 | 4 | **Interview Prep** — bilingual interview questions, answer outlines, and gap analysis | Library (`resume_jobs.interview`) |
 | 5 | **Cover Letter** — tailored *Anschreiben* (DE) + cover letter (EN) | Library (`resume_jobs.cover_letter`) |
@@ -133,7 +133,7 @@ JobPilot/
 
 ### Completed Milestones
 - [x] **Resume Parser**: PDF text extraction and structured DE/EN profile parsing
-- [x] **Job Search**: Live listings for the Heilbronn & Baden-Württemberg corridor
+- [x] **Job Search**: Live listings for Baden-Württemberg (Heilbronn, Stuttgart & beyond)
 - [x] **Smart Matching**: Profile ∩ Job Description scoring with bilingual rationale
 - [x] **Interview Prep**: Role-tailored questions, answer strategies, and gap analysis
 - [x] **Cover Letter**: Automated German *Anschreiben* and English cover letters
