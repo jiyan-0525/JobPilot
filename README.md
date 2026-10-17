@@ -2,8 +2,8 @@
 
 # 🧭 JobPilot
 
-**From Resume to Interview — Tailored for the Heilbronn & Baden-Württemberg Corridor.**  
-*Bilingual (German & English) • Powered by Groq*
+**From Resume to Interview — Tailored for the Heilbronn & Baden-Württemberg.**  
+*German & English • Powered by Groq*
 
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB.svg?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![AI Engine](https://img.shields.io/badge/AI%20Engine-Groq-f55036.svg?style=flat-square)](https://groq.com)
