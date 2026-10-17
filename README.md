@@ -24,95 +24,125 @@ JobPilot is an end-to-end career copilot designed for job seekers in the Heilbro
 ## 🎯 Features
 
 | Step | Feature | Interface |
-|------|---------|-----------|
-| 1 | **Resume parser** — PDF → structured profile (DE + EN) | `resume_app.py` |
-| 2 | **Job search** — live listings in the Heilbronn Baden-Württemberg corridor | `jobs_app.py` |
-| 3 | **Matching** — rank jobs against the profile (DE + EN reasons) | library (`resume_jobs.match`) |
-| 4 | **Interview prep** — bilingual questions, answer outlines, gap analysis | library (`resume_jobs.interview`) |
-| 5 | **Cover letter** — Anschreiben (DE) + cover letter (EN) | library (`resume_jobs.cover_letter`) |
-| 6 | **Fit check** — paste a job posting → CV-vs-JD fit score, matched/missing skills, and a learning plan for the gaps | `streamlit_app.py` (inside the Resume tab, below the profile) (`resume_jobs.jd_fit`) |
+|:---:|---|---|
+| 1 | **Resume Parser** — PDF → structured profile (DE + EN) | `resume_app.py` |
+| 2 | **Job Search** — live listings in the Heilbronn & Baden-Württemberg corridor | `jobs_app.py` |
+| 3 | **Smart Match** — rank jobs against the candidate profile with DE/EN rationale | Library (`resume_jobs.match`) |
+| 4 | **Interview Prep** — bilingual interview questions, answer outlines, and gap analysis | Library (`resume_jobs.interview`) |
+| 5 | **Cover Letter** — tailored *Anschreiben* (DE) + cover letter (EN) | Library (`resume_jobs.cover_letter`) |
+| 6 | **Fit Check** — paste a JD → fit score, matched/missing skills, and targeted learning plan | `streamlit_app.py` (`resume_jobs.jd_fit`) |
 
-> The earlier calculator / weather demo tools have been removed; see git history if needed.
+---
 
 ## 🚀 Quick Start
+
+### 1. Clone & Install
 
 ```bash
 git clone git@github.com:jiyan-0525/JobPilot.git
 cd JobPilot
 
+python -m venv .venv
+source .venv/bin/activate    # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-# create .env with your Groq key (job search needs no key):
-#   GROQ_API_KEY=your_key_from_https://console.groq.com/keys
-
-# Resume parser (tab 1)
-.venv/bin/python -m streamlit run resume_app.py
-
-# Job search (tab 2)
-.venv/bin/python -m streamlit run jobs_app.py
 ```
+
+### 2. Configure Environment
+
+Create a `.env` file in the project root:
+
+```bash
+cp .env.example .env   # or create .env directly
+```
+
+```ini
+GROQ_API_KEY=your_key_from_https://console.groq.com/keys
+GROQ_MODEL=openai/gpt-oss-120b        # optional; defaults to openai/gpt-oss-120b
+```
+
+> **Note**: Job search connects to the public Bundesagentur für Arbeit API and does not require an external key.
+
+### 3. Launch the Application
+
+```bash
+# Recommended: Launch the integrated all-in-one UI
+streamlit run streamlit_app.py
+
+# Alternatively, launch standalone modules:
+streamlit run resume_app.py    # Resume parser tab
+streamlit run jobs_app.py      # Job search tab
+```
+
+### 4. Run Offline Tests
+
+```bash
+pytest tests/
+```
+
+---
+
+## ⚙️ Configuration & APIs
+
+- **Groq AI Engine** → Ultra-fast OpenAI-compatible inference with open-weights models.
+- **`GROQ_MODEL` Override** → Set to lighter models (e.g. `openai/gpt-oss-20b`) to bypass daily token caps on the free tier without modifying code.
+- **Bundesagentur für Arbeit Jobsuche API** → Official German employment service API (`X-API-Key: jobboerse-jobsuche`), free and public with no registration required.
+- **Arbeitnow API** → Integrated client available as a secondary job data source.
+
+---
 
 ## 🛠️ Tech Stack
 
-- 🤖 AI Engine: Groq + GPT-OSS 120B (`openai/gpt-oss-120b`)
-- 🌐 Web UI: Streamlit
-- 📄 Resume: `pypdf` (text-based PDFs)
-- 🔎 Jobs: Bundesagentur für Arbeit Jobsuche API (public key, no registration)
-- 🧪 Testing: pytest + GitHub Actions CI
-- 📦 Python: 3.10+
+- **AI Engine**: Groq + GPT-OSS 120B (`openai/gpt-oss-120b`)
+- **Web UI**: Streamlit
+- **PDF Extraction**: `pypdf`
+- **Job APIs**: Bundesagentur für Arbeit Jobsuche API & Arbeitnow
+- **Testing**: pytest (44 offline tests, no API key or network required)
+- **CI/CD**: GitHub Actions
+- **Python**: 3.10+
+
+---
 
 ## 🏗️ Project Structure
 
 ```
 JobPilot/
-├── resume_app.py           # Streamlit: resume → profile
-├── jobs_app.py             # Streamlit: job search corridor
-├── streamlit_app.py        # Streamlit: workflow tabs + Fit check (inside Resume tab)
+├── streamlit_app.py        # All-in-one UI: workflow tabs + Fit Check
+├── resume_app.py           # Standalone: resume → profile
+├── jobs_app.py             # Standalone: job search corridor
 ├── resume_jobs/
-│   ├── llm.py              # shared Groq client (lazy)
-│   ├── schema.py           # profile schema + normalization
-│   ├── resume.py           # extract_text() / parse_profile()
-│   ├── jobs.py             # Arbeitsagentur client (search + details)
-│   ├── arbeitnow.py        # Arbeitnow client (second source, no key)
-│   ├── step.py             # step framing: run_step / run_step_tool (role/task/context)
-│   ├── render.py           # profile_block / job_block
-│   ├── match.py            # rank_jobs() — step 3
-│   ├── jd_fit.py           # analyze_fit() — JD vs resume fit score + learning plan
-│   ├── interview.py        # prepare_interview() — step 4
-│   ├── learning_plan.py    # build_learning_plan() — fit-check study plan
-│   └── store.py            # JSON persistence (profiles, job caches)
-├── rag.py                  # minimal RAG (question bank)
-├── tests/                  # offline tests (no network, no API key)
+│   ├── llm.py              # Shared Groq client (lazy initialization)
+│   ├── schema.py           # Profile schema & normalization
+│   ├── resume.py           # PDF extraction & profile parsing
+│   ├── jobs.py             # Arbeitsagentur API client (search + details)
+│   ├── arbeitnow.py        # Arbeitnow API client (secondary source)
+│   ├── step.py             # Step framing (role / task / context)
+│   ├── render.py           # Profile & job block rendering
+│   ├── match.py            # Step 3: rank_jobs()
+│   ├── jd_fit.py           # Step 6: analyze_fit() & CV-vs-JD scoring
+│   ├── interview.py        # Step 4: prepare_interview()
+│   ├── learning_plan.py    # build_learning_plan() for skill gaps
+│   └── store.py            # Local JSON persistence (profiles, job caches)
+├── rag.py                  # Question bank RAG module
+├── tests/                  # Complete offline test suite (44 tests)
 ├── requirements.txt
-└── RESUME_JOBS.md          # full design doc & roadmap
+└── RESUME_JOBS.md          # Full design specification & API notes
 ```
 
-## ⚙️ Environment
+---
 
-`.env`:
+## 🗺️ Roadmap & Future Work
 
-```
-GROQ_API_KEY=gsk-your-groq-key-here
-GROQ_MODEL=openai/gpt-oss-120b        # optional; defaults to openai/gpt-oss-120b
-```
+### Completed Milestones
+- [x] **Resume Parser**: PDF text extraction and structured DE/EN profile parsing
+- [x] **Job Search**: Live listings for the Heilbronn & Baden-Württemberg corridor
+- [x] **Smart Matching**: Profile ∩ Job Description scoring with bilingual rationale
+- [x] **Interview Prep**: Role-tailored questions, answer strategies, and gap analysis
+- [x] **Cover Letter**: Automated German *Anschreiben* and English cover letters
+- [x] **Fit Check**: Paste any JD for fit score, missing skills, and learning plan
 
-- **Groq** → fast OpenAI-compatible inference (free tier).
-- **`GROQ_MODEL`** → optional model override. Free-tier daily token caps are
-  per-model, so switching (e.g. `openai/gpt-oss-20b`) sidesteps a TPD 429
-  without touching code.
-- **Bundesagentur für Arbeit Jobsuche API** → free, public, no key required
-  (`X-API-Key: jobboerse-jobsuche`).
+### Planned Enhancements
+- [ ] UI toggle for Arbeitnow as an alternative job board
+- [ ] Vector RAG for customized technical question banks (`rag.py`)
+- [ ] One-click PDF download for generated cover letters and interview prep sheets
 
-## 🗺️ Roadmap
-
-| # | Goal | Status |
-|---|------|--------|
-| 1 | Resume parser (PDF → profile, DE/EN) | ✅ done |
-| 2 | Job search (Heilbronn Baden-Württemberg corridor) | ✅ done |
-| 3 | Matching: profile ∩ job description | ✅ done |
-| 4 | Interview prep (DE/EN questions & answers) | ✅ done |
-| 5 | Cover letter (Anschreiben DE / cover letter EN) | ✅ done |
-| 6 | Fit check: paste a JD → fit score, gaps, learning plan | ✅ done |
-
-An optional question-bank RAG would use the minimal `rag.py`.
-
-See [`RESUME_JOBS.md`](RESUME_JOBS.md) for the full design, API notes, and out-of-scope items.
+See [`RESUME_JOBS.md`](RESUME_JOBS.md) for architectural details, API notes, and design guidelines.
