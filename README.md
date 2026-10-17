@@ -1,11 +1,25 @@
-# JobPilot
+<div align="center">
 
-**Resume → Jobs → Interview for the Heilbronn Baden-Württemberg corridor.**
-Bilingual (German + English), powered by Groq + GPT-OSS 120B.
+# 🧭 JobPilot
 
-JobPilot reads your resume, finds matching jobs from Germany's official job
-database in the Heilbronn Baden-Württemberg area, and (next) prepares a tailored
-interview for each role.
+**From Resume to Interview — Tailored for the Heilbronn & Baden-Württemberg Corridor.**  
+*Bilingual (German & English) • Powered by Groq*
+
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB.svg?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![AI Engine](https://img.shields.io/badge/AI%20Engine-Groq-f55036.svg?style=flat-square)](https://groq.com)
+[![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B.svg?style=flat-square&logo=streamlit&logoColor=white)](https://streamlit.io)
+[![Bilingual](https://img.shields.io/badge/Bilingual-DE%20%2B%20EN-2ea44f.svg?style=flat-square)](#)
+
+<br />
+
+![JobPilot UI Overview](image.png)
+
+</div>
+
+JobPilot is an end-to-end career copilot designed for job seekers in the Heilbronn and Baden-Württemberg region. It parses your PDF resume, discovers live listings directly from Germany's official **Bundesagentur für Arbeit** database, runs an instant Fit Check on any job description (scoring CV-vs-JD alignment, identifying skill gaps, and generating targeted learning plans), and prepares tailored interview strategies and cover letters.
+
+
+
 
 ## 🎯 Features
 
