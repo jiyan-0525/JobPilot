@@ -12,7 +12,7 @@ from resume_jobs.render import profile_block
 from resume_jobs.step import MODEL, run_step_tool
 
 JD_TEXT_LIMIT = 6000
-FIT_MAX_TOKENS = 2500
+FIT_MAX_TOKENS = 4000
 
 FIT_TOOL = {
     "type": "function",

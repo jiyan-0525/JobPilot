@@ -139,3 +139,41 @@ def test_run_step_tool_caps_reasoning_for_gpt_oss():
     other = FakeToolClient({"ok": True})
     run_step_tool("r", "t", "e", None, TOOL, client=other, model="llama-3.3-70b-versatile")
     assert "extra_body" not in other.requests[0]
+
+
+def test_run_step_tool_extracts_json_from_content_fallback():
+    # Model returned text with JSON markdown instead of calling a tool directly
+    client = FakeTextClient("Here is the result:\n```json\n{\"ok\": true}\n```")
+    result = run_step_tool("r", "t", "e", None, TOOL, client=client)
+    assert result == {"ok": True}
+
+
+def test_run_step_tool_extracts_from_failed_generation():
+    # Groq rejected tool formatting but preserved generation in failed_generation
+    request = httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions")
+    exc = BadRequestError(
+        "Failed to call function",
+        response=httpx.Response(400, request=request),
+        body={
+            "error": {
+                "code": "tool_use_failed",
+                "message": "Failed to call a function",
+                "failed_generation": "```json\n{\"ok\": true}\n```",
+            }
+        },
+    )
+
+    class FailingClient:
+        def __init__(self):
+            self.completions = self
+
+        @property
+        def chat(self):
+            return self
+
+        def create(self, **kwargs):
+            raise exc
+
+    result = run_step_tool("r", "t", "e", None, TOOL, client=FailingClient())
+    assert result == {"ok": True}
+

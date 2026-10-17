@@ -98,6 +98,55 @@ def run_step(
     return resp.choices[0].message.content or ""
 
 
+def _extract_json_from_text(text: Optional[str]) -> Optional[dict]:
+    """Attempt to extract a JSON dictionary from free-form text or markdown code blocks."""
+    if not text or not isinstance(text, str):
+        return None
+    text = text.strip()
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+
+    if "```" in text:
+        for chunk in text.split("```"):
+            chunk = chunk.strip()
+            if chunk.startswith("json"):
+                chunk = chunk[4:].strip()
+            try:
+                data = json.loads(chunk)
+                if isinstance(data, dict):
+                    return data
+            except Exception:
+                continue
+
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end > start:
+        try:
+            data = json.loads(text[start : end + 1])
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            pass
+
+    return None
+
+
+def _extract_failed_generation(exc: Exception) -> Optional[dict]:
+    """Groq often embeds the model's unparsed generation inside error.failed_generation."""
+    body = getattr(exc, "body", None)
+    if isinstance(body, dict):
+        error = body.get("error")
+        if isinstance(error, dict):
+            fg = error.get("failed_generation")
+            if isinstance(fg, str):
+                return _extract_json_from_text(fg)
+    return None
+
+
 def run_step_tool(
     role: str,
     task: str,
@@ -115,26 +164,40 @@ def run_step_tool(
     """
     client = _client_or_default(client)
     name = tool["function"]["name"]
-    request = dict(
-        model=model,
-        messages=build_messages(role, task, expected_output, context),
-        tools=[tool],
-        tool_choice={"type": "function", "function": {"name": name}},
-        temperature=temperature,
-        max_tokens=max_tokens,
-        **_request_kwargs(model),
-    )
 
     last_error: Optional[Exception] = None
     for attempt in range(_TOOL_ATTEMPTS):
+        # On retries, slightly vary temperature to prevent repeating deterministic parser failures
+        attempt_temp = temperature if attempt == 0 else min(0.6, temperature + 0.15 * attempt)
+        request = dict(
+            model=model,
+            messages=build_messages(role, task, expected_output, context),
+            tools=[tool],
+            tool_choice={"type": "function", "function": {"name": name}},
+            temperature=attempt_temp,
+            max_tokens=max_tokens,
+            **_request_kwargs(model),
+        )
         try:
             resp = client.chat.completions.create(**request)
             message = resp.choices[0].message
             tool_calls = getattr(message, "tool_calls", None)
             if tool_calls:
                 return json.loads(tool_calls[0].function.arguments)
+
+            # Fallback 1: check if the model returned valid JSON in message.content
+            content = getattr(message, "content", None)
+            extracted = _extract_json_from_text(content)
+            if extracted is not None:
+                return extracted
+
             last_error = ValueError(f"model did not call {name}")
         except BadRequestError as exc:
+            # Fallback 2: Groq tool_use_failed often includes the generated JSON in failed_generation
+            extracted = _extract_failed_generation(exc)
+            if extracted is not None:
+                return extracted
+
             if not _is_tool_use_failed(exc):
                 raise
             last_error = exc
@@ -144,3 +207,4 @@ def run_step_tool(
     raise ValueError(
         f"model did not call {name} after {_TOOL_ATTEMPTS} attempts"
     ) from last_error
+

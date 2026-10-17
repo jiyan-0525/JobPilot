@@ -96,7 +96,7 @@ pytest tests/
 - **Web UI**: Streamlit
 - **PDF Extraction**: `pypdf`
 - **Job APIs**: Bundesagentur für Arbeit Jobsuche API & Arbeitnow
-- **Testing**: pytest (44 offline tests, no API key or network required)
+- **Testing**: pytest (46 offline tests, no API key or network required)
 - **CI/CD**: GitHub Actions
 - **Python**: 3.10+
 
@@ -123,7 +123,7 @@ JobPilot/
 │   ├── learning_plan.py    # build_learning_plan() for skill gaps
 │   └── store.py            # Local JSON persistence (profiles, job caches)
 ├── rag.py                  # Question bank RAG module
-├── tests/                  # Complete offline test suite (44 tests)
+├── tests/                  # Complete offline test suite (46 tests)
 ├── requirements.txt
 └── RESUME_JOBS.md          # Full design specification & API notes
 ```
