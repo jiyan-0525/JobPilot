@@ -205,12 +205,13 @@ tab_resume, tab_jobs, tab_match, tab_interview, tab_cover = tabs
 with tab_resume:
     section("📄", "Resume")
     uploaded = st.file_uploader("Upload resume PDF", type=["pdf"])
-    pasted_resume = st.text_area(
-        "Or paste resume text",
-        height=160,
-        key="pasted_resume",
-        placeholder="If you do not upload a PDF, paste your resume text here…",
-    )
+    with st.expander("PDF not available? Paste resume text instead"):
+        pasted_resume = st.text_area(
+            "Resume text",
+            height=160,
+            key="pasted_resume",
+            placeholder="Paste your resume text here…",
+        )
 
     text = ""
     if uploaded is not None:
@@ -281,7 +282,7 @@ with tab_resume:
     if jd_text.strip() and st.session_state.profile:
         st.markdown("##### ✉️ Generate a cover letter from this job description")
         jd_cover_c1, jd_cover_c2 = st.columns(2)
-        if jd_cover_c1.button("🇩🇪 Generate Anschreiben", use_container_width=True):
+        if jd_cover_c1.button("🇩🇪 Generate Anschreiben", type="primary", use_container_width=True):
             with st.spinner("Schreibe Anschreiben…"):
                 try:
                     st.session_state.jd_cover_de = write_cover_letter_from_jd(
@@ -289,7 +290,7 @@ with tab_resume:
                     )
                 except Exception as exc:
                     st.error(f"Cover letter generation failed: {exc}")
-        if jd_cover_c2.button("🇬🇧 Generate cover letter", use_container_width=True):
+        if jd_cover_c2.button("🇬🇧 Generate cover letter", type="primary", use_container_width=True):
             with st.spinner("Writing cover letter…"):
                 try:
                     st.session_state.jd_cover_en = write_cover_letter_from_jd(
