@@ -30,7 +30,7 @@ JobPilot is an end-to-end career copilot designed for the German tech job market
 | 3 | **Smart Match** — rank jobs against the candidate profile with DE/EN rationale | Library (`resume_jobs.match`) |
 | 4 | **Interview Prep** — bilingual interview questions, answer outlines, and gap analysis | Library (`resume_jobs.interview`) |
 | 5 | **Cover Letter** — tailored *Anschreiben* (DE) + cover letter (EN) | Library (`resume_jobs.cover_letter`) |
-| 6 | **Fit Check** — paste a JD → fit score, matched/missing skills, and targeted learning plan | `streamlit_app.py` (`resume_jobs.jd_fit`) |
+| 6 | **Fit Check** — paste a JD → fit score, matched/missing skills, targeted learning plan, and resume-grounded cover letter generation (PDF or pasted resume) | `streamlit_app.py` (`resume_jobs.jd_fit`) |
 
 ---
 

@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from resume_jobs.cover_letter import write_cover_letter
+from resume_jobs.cover_letter import write_cover_letter, write_cover_letter_from_jd
 
 PROFILE = {
     "name": "Alex Beispiel",
@@ -70,3 +70,28 @@ def test_write_cover_letter_german():
 def test_write_cover_letter_rejects_unknown_language():
     with pytest.raises(ValueError):
         write_cover_letter(PROFILE, JOB, language="fr", client=FakeTextClient("x"))
+
+
+def test_write_cover_letter_from_jd_uses_pasted_description():
+    client = FakeTextClient("## English (Cover letter)\nDear ...")
+    out = write_cover_letter_from_jd(
+        PROFILE,
+        "We need Airflow, SQL and cloud cost awareness.",
+        client=client,
+    )
+
+    assert out.startswith("## English")
+    user = client.requests[0]["messages"][1]["content"]
+    assert "JOB DESCRIPTION" not in user
+    assert "We need Airflow, SQL and cloud cost awareness." in user
+    assert "Title:" in user and "Company:" in user
+
+
+def test_write_cover_letter_from_jd_rejects_empty_description():
+    with pytest.raises(ValueError):
+        write_cover_letter_from_jd(PROFILE, "  ", client=FakeTextClient("x"))
+
+
+def test_write_cover_letter_from_jd_requires_profile():
+    with pytest.raises(ValueError, match="candidate profile"):
+        write_cover_letter_from_jd({}, "We are hiring a Python developer.", client=FakeTextClient("x"))

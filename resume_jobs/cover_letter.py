@@ -54,3 +54,31 @@ def write_cover_letter(
         model=model,
         max_tokens=4000,
     )
+
+
+def write_cover_letter_from_jd(
+    profile: dict,
+    jd_text: str,
+    language: str = "en",
+    client: Any = None,
+    model: str = MODEL,
+) -> str:
+    """Return a cover letter from a pasted job description and candidate profile."""
+    if not isinstance(jd_text, str) or not jd_text.strip():
+        raise ValueError("jd_text must be a non-empty string")
+    if not profile or not profile_block(profile):
+        raise ValueError("a non-empty candidate profile is required")
+
+    return write_cover_letter(
+        profile,
+        {
+            "title": "",
+            "company": "",
+            "location": "",
+            "offer_type": "",
+            "description": jd_text,
+        },
+        language=language,
+        client=client,
+        model=model,
+    )

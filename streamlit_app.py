@@ -14,7 +14,10 @@ import streamlit as st
 from dotenv import load_dotenv
 
 sys.path.append(".")
-from resume_jobs.cover_letter import write_cover_letter  # noqa: E402
+from resume_jobs.cover_letter import (  # noqa: E402
+    write_cover_letter,
+    write_cover_letter_from_jd,
+)
 from resume_jobs.interview import prepare_interview  # noqa: E402
 from resume_jobs.jd_fit import analyze_fit, learning_plan_markdown  # noqa: E402
 from resume_jobs.jobs import HOME_POSTAL_CODE, search_corridor  # noqa: E402
@@ -176,7 +179,10 @@ def glassdoor_url(keyword: str) -> str:
     """Deep link into Glassdoor's German job search (no public API available)."""
     return "https://www.glassdoor.de/Job/jobs.htm?sc.keyword=" + quote(keyword or "")
 
-for key in ("profile", "jobs", "ranked", "job", "interview_md", "cover_de", "cover_en", "fit_result"):
+for key in (
+    "profile", "jobs", "ranked", "job", "interview_md", "cover_de", "cover_en",
+    "fit_result", "jd_cover_de", "jd_cover_en",
+):
     st.session_state.setdefault(key, None)
 
 st.markdown(
@@ -199,12 +205,20 @@ tab_resume, tab_jobs, tab_match, tab_interview, tab_cover = tabs
 with tab_resume:
     section("📄", "Resume")
     uploaded = st.file_uploader("Upload resume PDF", type=["pdf"])
+    pasted_resume = st.text_area(
+        "Or paste resume text",
+        height=160,
+        key="pasted_resume",
+        placeholder="If you do not upload a PDF, paste your resume text here…",
+    )
 
     text = ""
     if uploaded is not None:
         text = extract_text(uploaded)
         if not text:
             st.error("No text extracted — likely a scanned PDF (OCR unsupported).")
+    elif pasted_resume.strip():
+        text = pasted_resume.strip()
 
     if st.button("Analyze resume", type="primary", disabled=not text):
         with st.spinner("Extracting profile…"):
@@ -246,22 +260,65 @@ with tab_resume:
             st.success(f"Saved: {save_profile(profile)}")
 
     section("🧩", "Fit check")
-    if not st.session_state.profile:
-        st.info("Analyze your resume above to unlock the fit check.")
-    else:
+    if st.session_state.profile:
         st.caption(f"Comparing against **{st.session_state.profile['name'] or 'your profile'}** "
                    "— paste a job posting to see how well it matches.")
-        jd_text = st.text_area("Job description", height=200, key="jd_text",
-                               placeholder="Paste the full job advertisement here…")
+    else:
+        st.caption("Upload a PDF or paste resume text above, then analyze it before generating a cover letter.")
+
+    jd_text = st.text_area("Job description", height=200, key="jd_text",
+                           placeholder="Paste the full job advertisement here…")
+    if st.session_state.profile:
         if st.button("Analyze fit", type="primary", disabled=not jd_text.strip()):
             with st.spinner("Comparing the job description with your resume…"):
                 try:
                     st.session_state.fit_result = analyze_fit(st.session_state.profile, jd_text)
                 except Exception as exc:
                     st.error(f"Fit check failed: {exc}")
+    elif jd_text.strip():
+        st.info("Analyze a PDF or pasted resume text above before generating a cover letter.")
 
-        fit = st.session_state.fit_result
-        if fit:
+    if jd_text.strip() and st.session_state.profile:
+        st.markdown("##### ✉️ Generate a cover letter from this job description")
+        jd_cover_c1, jd_cover_c2 = st.columns(2)
+        if jd_cover_c1.button("🇩🇪 Generate Anschreiben", use_container_width=True):
+            with st.spinner("Schreibe Anschreiben…"):
+                try:
+                    st.session_state.jd_cover_de = write_cover_letter_from_jd(
+                        st.session_state.profile or {}, jd_text, language="de"
+                    )
+                except Exception as exc:
+                    st.error(f"Cover letter generation failed: {exc}")
+        if jd_cover_c2.button("🇬🇧 Generate cover letter", use_container_width=True):
+            with st.spinner("Writing cover letter…"):
+                try:
+                    st.session_state.jd_cover_en = write_cover_letter_from_jd(
+                        st.session_state.profile or {}, jd_text, language="en"
+                    )
+                except Exception as exc:
+                    st.error(f"Cover letter generation failed: {exc}")
+
+        if st.session_state.jd_cover_de:
+            st.markdown(st.session_state.jd_cover_de)
+            st.download_button(
+                "⬇️ anschreiben_from_jd_de.md",
+                st.session_state.jd_cover_de,
+                "anschreiben_from_jd_de.md",
+                "text/markdown",
+            )
+    elif jd_text.strip():
+        st.info("Cover letter generation needs your resume so it can be grounded in your experience.")
+        if st.session_state.jd_cover_en:
+            st.markdown(st.session_state.jd_cover_en)
+            st.download_button(
+                "⬇️ cover_letter_from_jd_en.md",
+                st.session_state.jd_cover_en,
+                "cover_letter_from_jd_en.md",
+                "text/markdown",
+            )
+
+    fit = st.session_state.fit_result
+    if fit and st.session_state.profile:
             m1, m2 = st.columns(2)
             m1.metric("Fit score", f"{fit['score']:.0f} / 100")
             m2.metric("Verdict", fit["verdict"] or "—")
