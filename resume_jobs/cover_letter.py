@@ -11,7 +11,11 @@ from typing import Any
 from resume_jobs.render import job_block, profile_block
 from resume_jobs.step import MODEL, run_step
 
-ROLE = "a professional application writer helping one candidate apply for one specific job"
+ROLE = (
+    "a professional application writer helping one candidate apply for one specific job. "
+    "Treat the candidate profile, job description, and any user-provided background as factual "
+    "sources. Do not invent, exaggerate, or contradict any candidate information."
+)
 
 # Instruction per language, written in the target language (better output).
 TASKS = {
@@ -35,21 +39,30 @@ HEADINGS = {"en": "English (Cover letter)", "de": "Deutsch (Anschreiben)"}
 
 
 def write_cover_letter(
-    profile: dict, job: dict, language: str = "en", client: Any = None, model: str = MODEL
+    profile: dict,
+    job: dict,
+    language: str = "en",
+    client: Any = None,
+    model: str = MODEL,
+    additional_context: str = "",
 ) -> str:
     """Return a cover letter in one language ('de' or 'en') as Markdown."""
     language = language.lower()
     if language not in TASKS:
         raise ValueError("language must be 'de' or 'en'")
 
+    context = [
+        f"CANDIDATE PROFILE\n{profile_block(profile)}",
+        f"JOB\n{job_block(job)}",
+    ]
+    if additional_context.strip():
+        context.append(additional_context.strip())
+
     return run_step(
         role=ROLE,
         task=TASKS[language],
         expected_output=f"Markdown starting with '## {HEADINGS[language]}'.",
-        context=[
-            f"CANDIDATE PROFILE\n{profile_block(profile)}",
-            f"JOB\n{job_block(job)}",
-        ],
+        context=context,
         client=client,
         model=model,
         max_tokens=4000,
@@ -60,25 +73,41 @@ def write_cover_letter_from_jd(
     profile: dict,
     jd_text: str,
     language: str = "en",
+    personal_background: str = "",
     client: Any = None,
     model: str = MODEL,
 ) -> str:
-    """Return a cover letter from a pasted job description and candidate profile."""
+    """Return a cover letter from a JD, candidate profile, and optional background."""
     if not isinstance(jd_text, str) or not jd_text.strip():
         raise ValueError("jd_text must be a non-empty string")
     if not profile or not profile_block(profile):
         raise ValueError("a non-empty candidate profile is required")
 
+    if personal_background and not isinstance(personal_background, str):
+        raise ValueError("personal_background must be a string")
+
+    job = {
+        "title": "",
+        "company": "",
+        "location": "",
+        "offer_type": "",
+        "description": jd_text,
+    }
+    additional_context = ""
+    if personal_background.strip():
+        additional_context = (
+            "CANDIDATE'S USER-PROVIDED ADDITIONAL PERSONAL BACKGROUND\n"
+            f"{personal_background.strip()}\n"
+            "Use this only when it is consistent with the verified personal background and "
+            "candidate profile. "
+            "Do not invent or exaggerate any details."
+        )
+
     return write_cover_letter(
         profile,
-        {
-            "title": "",
-            "company": "",
-            "location": "",
-            "offer_type": "",
-            "description": jd_text,
-        },
+        job,
         language=language,
         client=client,
         model=model,
+        additional_context=additional_context,
     )

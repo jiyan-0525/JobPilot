@@ -269,6 +269,15 @@ with tab_resume:
 
     jd_text = st.text_area("Job description", height=200, key="jd_text",
                            placeholder="Paste the full job advertisement here…")
+    personal_background = st.text_area(
+        "Optional personal background",
+        height=100,
+        key="personal_background",
+        placeholder=(
+            "Add relevant context not fully captured in your resume, such as motivation, "
+            "relocation plans, work authorization, or a career transition…"
+        ),
+    )
     if st.session_state.profile:
         if st.button("Analyze fit", type="primary", disabled=not jd_text.strip()):
             with st.spinner("Comparing the job description with your resume…"):
@@ -286,7 +295,10 @@ with tab_resume:
             with st.spinner("Schreibe Anschreiben…"):
                 try:
                     st.session_state.jd_cover_de = write_cover_letter_from_jd(
-                        st.session_state.profile or {}, jd_text, language="de"
+                        st.session_state.profile or {},
+                        jd_text,
+                        language="de",
+                        personal_background=personal_background,
                     )
                 except Exception as exc:
                     st.error(f"Cover letter generation failed: {exc}")
@@ -294,7 +306,10 @@ with tab_resume:
             with st.spinner("Writing cover letter…"):
                 try:
                     st.session_state.jd_cover_en = write_cover_letter_from_jd(
-                        st.session_state.profile or {}, jd_text, language="en"
+                        st.session_state.profile or {},
+                        jd_text,
+                        language="en",
+                        personal_background=personal_background,
                     )
                 except Exception as exc:
                     st.error(f"Cover letter generation failed: {exc}")
@@ -307,8 +322,6 @@ with tab_resume:
                 "anschreiben_from_jd_de.md",
                 "text/markdown",
             )
-    elif jd_text.strip():
-        st.info("Cover letter generation needs your resume so it can be grounded in your experience.")
         if st.session_state.jd_cover_en:
             st.markdown(st.session_state.jd_cover_en)
             st.download_button(
@@ -317,6 +330,8 @@ with tab_resume:
                 "cover_letter_from_jd_en.md",
                 "text/markdown",
             )
+    elif jd_text.strip():
+        st.info("Cover letter generation needs your resume so it can be grounded in your experience.")
 
     fit = st.session_state.fit_result
     if fit and st.session_state.profile:

@@ -77,6 +77,7 @@ def test_write_cover_letter_from_jd_uses_pasted_description():
     out = write_cover_letter_from_jd(
         PROFILE,
         "We need Airflow, SQL and cloud cost awareness.",
+        personal_background="I am relocating to Stuttgart.",
         client=client,
     )
 
@@ -85,6 +86,8 @@ def test_write_cover_letter_from_jd_uses_pasted_description():
     assert "JOB DESCRIPTION" not in user
     assert "We need Airflow, SQL and cloud cost awareness." in user
     assert "Title:" in user and "Company:" in user
+    assert "I am relocating to Stuttgart." in user
+    assert "ADDITIONAL PERSONAL BACKGROUND" in user
 
 
 def test_write_cover_letter_from_jd_rejects_empty_description():
