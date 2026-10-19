@@ -267,17 +267,14 @@ with tab_resume:
     else:
         st.caption("Upload a PDF or paste resume text above, then analyze it before generating a cover letter.")
 
-    jd_text = st.text_area("Job description", height=200, key="jd_text",
-                           placeholder="Paste the full job advertisement here…")
-    personal_background = st.text_area(
-        "Optional personal background",
-        height=100,
-        key="personal_background",
-        placeholder=(
-            "Add relevant context not fully captured in your resume, such as motivation, "
-            "relocation plans, work authorization, or a career transition…"
-        ),
-    )
+    with st.expander("Job description — paste job description here"):
+        jd_text = st.text_area(
+            "Job description",
+            height=200,
+            key="jd_text",
+            placeholder="Paste the full job advertisement here…",
+            label_visibility="collapsed",
+        )
     if st.session_state.profile:
         if st.button("Analyze fit", type="primary", disabled=not jd_text.strip()):
             with st.spinner("Comparing the job description with your resume…"):
@@ -298,7 +295,6 @@ with tab_resume:
                         st.session_state.profile or {},
                         jd_text,
                         language="de",
-                        personal_background=personal_background,
                     )
                 except Exception as exc:
                     st.error(f"Cover letter generation failed: {exc}")
@@ -309,7 +305,6 @@ with tab_resume:
                         st.session_state.profile or {},
                         jd_text,
                         language="en",
-                        personal_background=personal_background,
                     )
                 except Exception as exc:
                     st.error(f"Cover letter generation failed: {exc}")
