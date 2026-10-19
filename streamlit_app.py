@@ -420,7 +420,7 @@ with tab_jobs:
             st.caption("Tip: run tab 1 first — the search then uses your profile's target roles.")
     offers = col2.multiselect("Job types", list(OFFER_OPTIONS) + [REMOTE_LABEL],
                               default=list(OFFER_OPTIONS) + [REMOTE_LABEL])
-    radius = col3.slider("Radius (km per city)", 10, 80, 45)
+    radius = col3.slider("Radius (km per city)", 10, 300, 45)
     published = st.selectbox("Published within", list(PUBLISHED_OPTIONS))
     include_arbeitnow = st.checkbox("Also search Arbeitnow (second source, no key)", value=True)
 

@@ -43,7 +43,7 @@ with st.form("search_form"):
                      "Internship / Trainee", REMOTE_LABEL],
         )
     with col3:
-        radius = st.slider("Radius (km per city)", 10, 80, 45)
+        radius = st.slider("Radius (km per city)", 10, 300, 45)
 
     published_label = st.selectbox("Published within", list(PUBLISHED_OPTIONS))
     submitted = st.form_submit_button("Search", type="primary")
