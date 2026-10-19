@@ -7,6 +7,13 @@ from resume_jobs.cover_letter import write_cover_letter, write_cover_letter_from
 
 PROFILE = {
     "name": "Alex Beispiel",
+    "contact": {
+        "street": "Musterstrasse 12",
+        "postal_code": "74072",
+        "location": "Heilbronn",
+        "phone": "+49 170 123456",
+        "email": "alex@example.com",
+    },
     "target_roles": ["Data Engineer"],
     "years_experience": 5,
     "skills": {"technical": ["Python", "SQL"], "tools": ["Airflow"], "soft": []},
@@ -24,6 +31,8 @@ JOB = {
     "title": "Senior Data Engineer (m/w/d)",
     "company": "BCM Solutions GmbH",
     "location": "Stuttgart",
+    "street": "Industriestrasse 5",
+    "postal_code": "70173",
     "distance_km": 1,
     "offer_type": "ARBEIT",
     "description": "We need Airflow, SQL and cloud cost awareness.",
@@ -54,6 +63,9 @@ def test_write_cover_letter_english():
     user = client.requests[0]["messages"][1]["content"]
     assert "CANDIDATE PROFILE" in user and "Alex Beispiel" in user
     assert "JOB" in user and "BCM Solutions GmbH" in user
+    assert "Musterstrasse 12" in user
+    assert "Industriestrasse 5" in user
+    assert "Copy every value exactly" in user
     assert "in English" in user
 
 

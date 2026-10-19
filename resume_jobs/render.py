@@ -7,6 +7,17 @@ def profile_block(profile: dict) -> str:
     lines: list[str] = []
     if profile.get("name"):
         lines.append(f"Name: {profile['name']}")
+    contact = profile.get("contact") if isinstance(profile.get("contact"), dict) else {}
+    for label, key in (
+        ("Street address", "street"),
+        ("Postal code", "postal_code"),
+        ("City", "location"),
+        ("Phone", "phone"),
+        ("Email", "email"),
+    ):
+        value = contact.get(key)
+        if value:
+            lines.append(f"{label}: {value}")
     if profile.get("target_roles"):
         lines.append("Target roles: " + ", ".join(profile["target_roles"]))
     years = profile.get("years_experience")
@@ -59,6 +70,10 @@ def job_block(job: dict, max_description: int = 4000) -> str:
         f"Location: {job.get('location', '')} ({job.get('distance_km', '?')} km)",
         f"Offer type: {job.get('offer_type', '')}",
     ]
+    if job.get("street"):
+        parts.append(f"Company street address: {job['street']}")
+    if job.get("postal_code"):
+        parts.append(f"Company postal code: {job['postal_code']}")
     description = job.get("description") or ""
     if description:
         parts.append("Description:\n" + description[:max_description])

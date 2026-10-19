@@ -129,7 +129,9 @@ def test_normalize_profile_fills_defaults():
     assert out["skills"] == {"technical": [], "tools": [], "soft": []}
     assert out["experience"] == []
     assert out["years_experience"] == 0.0
-    assert set(out["contact"]) == {"email", "phone", "location", "linkedin", "github"}
+    assert set(out["contact"]) == {
+        "email", "phone", "location", "street", "postal_code", "linkedin", "github"
+    }
 
 
 def test_normalize_profile_coerces_bad_types():

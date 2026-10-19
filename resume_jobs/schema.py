@@ -5,7 +5,15 @@ and the shape `normalize_profile` produces. Factual fields stay language-neutral
 free text reused for interviews / cover letters is emitted in German and English.
 """
 
-CONTACT_KEYS = ("email", "phone", "location", "linkedin", "github")
+CONTACT_KEYS = (
+    "email",
+    "phone",
+    "location",
+    "street",
+    "postal_code",
+    "linkedin",
+    "github",
+)
 SKILL_KEYS = ("technical", "tools", "soft")
 EXPERIENCE_KEYS = ("title", "company", "location", "start", "end")
 EDUCATION_KEYS = ("degree", "institution", "start", "end")

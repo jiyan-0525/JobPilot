@@ -16,6 +16,9 @@ EXTRACTION_TASK = """Extract the resume into the structured profile. Rules:
 - target_roles: 1-10 job titles the candidate should apply for (used for job search).
 - Preserve original date text (03/2021, 2020, 'seit 2020', 'heute'/'present'); never invent dates.
 - summary_de in German, summary_en in English (one sentence each).
+- Extract the candidate's postal address, phone number, and email into contact.street,
+  contact.postal_code, contact.location, contact.phone, and contact.email when explicitly
+  present in the resume. Never infer or invent missing address components.
 - Each experience: 2-4 bullets in highlights_de (German) and highlights_en (English).
 - Use empty strings/arrays for anything missing; never fabricate.
 - Only call emit_profile, and output nothing else."""
