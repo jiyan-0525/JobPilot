@@ -21,7 +21,7 @@ from resume_jobs.cover_letter import (  # noqa: E402
 from resume_jobs.interview import prepare_interview  # noqa: E402
 from resume_jobs.jd_fit import analyze_fit, learning_plan_markdown  # noqa: E402
 from resume_jobs.jobs import HOME_POSTAL_CODE, search_corridor  # noqa: E402
-from resume_jobs.match import rank_jobs  # noqa: E402
+from resume_jobs.match import filter_jobs_for_profile, rank_jobs  # noqa: E402
 from resume_jobs.render import profile_block  # noqa: E402
 from resume_jobs.resume import extract_text, parse_profile  # noqa: E402
 from resume_jobs.store import save_jobs, save_profile  # noqa: E402
@@ -243,6 +243,8 @@ with tab_resume:
         st.markdown(
             f'<div class="kp-card">'
             f'<div class="k">Target roles</div><div class="s">{html.escape(roles)}</div>'
+            f'<div class="k" style="margin-top:.75rem">Industry experience</div>'
+            f'<div class="s">{html.escape(", ".join(sorted({e.get("industry") for e in profile.get("experience", []) if e.get("industry")}) or ["Not stated"]))}</div>'
             f'<div class="k" style="margin-top:.75rem">Skills</div>'
             f'<div class="s">{html.escape(", ".join(skills) or "—")}</div>'
             f'<div class="k" style="margin-top:.75rem">Languages</div>'
@@ -410,18 +412,19 @@ with tab_jobs:
 
     jobs = st.session_state.jobs
     if jobs is not None:
-        st.success(f"{len(jobs)} jobs found")
-        if jobs:
-            distances = [j["distance_km"] for j in jobs if isinstance(j["distance_km"], (int, float))]
+        visible_jobs = filter_jobs_for_profile(st.session_state.profile or {}, jobs)
+        st.success(f"{len(visible_jobs)} suitable jobs found")
+        if visible_jobs:
+            distances = [j["distance_km"] for j in visible_jobs if isinstance(j["distance_km"], (int, float))]
             m1, m2, m3 = st.columns(3)
-            m1.metric("Jobs", len(jobs))
+            m1.metric("Jobs", len(visible_jobs))
             m2.metric("Closest", f"{min(distances)} km" if distances else "—")
-            m3.metric("Cities", len({j["location"] for j in jobs if j["location"]}))
+            m3.metric("Cities", len({j["location"] for j in visible_jobs if j["location"]}))
 
             st.dataframe(
                 [{"source": j.get("source", ""), "km": j["distance_km"], "title": j["title"],
                   "company": j["company"], "location": j["location"], "type": j["offer_type"],
-                  "open": j["url"]} for j in jobs],
+                  "open": j["url"]} for j in visible_jobs],
                 width="stretch", hide_index=True,
                 column_config={
                     "km": st.column_config.NumberColumn("km from home", format="%.1f km"),
@@ -429,10 +432,10 @@ with tab_jobs:
                 })
 
             c1, c2 = st.columns(2)
-            c1.download_button("⬇️ jobs.json", json.dumps(jobs, ensure_ascii=False, indent=2),
+            c1.download_button("⬇️ jobs.json", json.dumps(visible_jobs, ensure_ascii=False, indent=2),
                                "jobs.json", "application/json", use_container_width=True)
             if c2.button("💾 Save jobs", use_container_width=True):
-                st.success(f"Saved: {save_jobs(jobs, keyword=keyword or 'jobs')}")
+                st.success(f"Saved: {save_jobs(visible_jobs, keyword=keyword or 'jobs')}")
 
 # ---- 3 · Match ------------------------------------------------------------
 with tab_match:
@@ -444,7 +447,11 @@ with tab_match:
         if st.button("Rank jobs", type="primary"):
             with st.spinner("Scoring…"):
                 try:
-                    st.session_state.ranked = rank_jobs(st.session_state.profile, st.session_state.jobs, top_n=8)
+                    st.session_state.ranked = rank_jobs(
+                        st.session_state.profile,
+                        filter_jobs_for_profile(st.session_state.profile, st.session_state.jobs),
+                        top_n=8,
+                    )
                 except Exception as exc:
                     st.error(f"Ranking failed: {exc}")
 
@@ -468,8 +475,9 @@ with tab_match:
         # Pick from every fetched job: the shortlist is just the top of the list,
         # so a job the ranking skipped is still selectable.
         scores = {r["job_id"]: r["score"] for r in (ranked or [])}
+        visible_jobs = filter_jobs_for_profile(st.session_state.profile, st.session_state.jobs)
         ordered = ([r["job"] for r in (ranked or [])]
-                   + [j for j in st.session_state.jobs if j["id"] not in scores])
+                   + [j for j in visible_jobs if j["id"] not in scores])
         labels = [
             f"{scores[j['id']]:.0f} · {j['title']} @ {j['company']} — {j['location'] or '—'}"
             if j["id"] in scores else

@@ -67,6 +67,14 @@ if profile:
             st.write(f"- {role}")
         years = profile.get("years_experience") or 0
         st.write(f"- Experience: about {years:g} years")
+        industries = {}
+        for exp in profile.get("experience") or []:
+            industry = exp.get("industry") or "Not stated"
+            industries[industry] = industries.get(industry, 0) + 1
+        if industries:
+            st.markdown("**Industry experience**")
+            for industry, count in industries.items():
+                st.write(f"- {industry} ({count} position{'s' if count != 1 else ''})")
         skills = profile.get("skills") or {}
         for label, key in (("Technical", "technical"), ("Tools", "tools"), ("Soft skills", "soft")):
             if skills.get(key):
@@ -83,6 +91,7 @@ if profile:
             exp["title"], exp["company"], f"{exp['start']}–{exp['end']}"
         )
         st.markdown(f"**{header}**")
+        st.caption(f"Industry: {exp.get('industry') or 'Not stated'}")
         highlights = exp["highlights_de"] if lang == "DE" else exp["highlights_en"]
         for point in highlights:
             st.write(f"- {point}")

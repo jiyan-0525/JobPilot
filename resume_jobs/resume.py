@@ -13,7 +13,23 @@ from resume_jobs.step import MODEL, run_step_tool
 
 EXTRACTION_TASK = """Extract the resume into the structured profile. Rules:
 - source_language: the resume body language, 'de' or 'en'.
-- target_roles: 1-10 job titles the candidate should apply for (used for job search).
+- target_roles: 1-10 job titles the candidate should apply for (used for job search). For
+  German resumes, include the German title and its common English equivalent when applicable,
+  e.g. "KI-Entwickler" and "AI Engineer", or "Softwareentwickler" and "Software Developer".
+- career_level: assess the candidate as junior, mid, senior, lead, or unknown from demonstrated
+  responsibilities. Use evidence from the resume, not title inflation or years alone. Junior
+  means mainly learning/contributing with limited independent ownership; senior requires clear
+  evidence of independent end-to-end ownership, architecture/technical decisions, mentoring,
+  or leadership. If senior evidence is not explicit and substantial, classify as junior or
+  unknown, never senior based only on years, skills, or a job title. Include confidence from
+  0 to 1 and short evidence items.
+- For every experience entry, extract `industry` only when the resume supports it (for example
+  software/data, finance, healthcare, retail, manufacturing); otherwise use an empty string.
+- Keep the sections strictly separate: `experience` contains paid work, internships, freelance
+  work, or volunteering only; `education` contains university, school, degree, and study
+  periods. Never copy education into `experience`, even when it has dates.
+- `years_experience` is calculated from the dated experience entries by the application. Do not
+  estimate or override it independently.
 - Preserve original date text (03/2021, 2020, 'seit 2020', 'heute'/'present'); never invent dates.
 - summary_de in German, summary_en in English (one sentence each).
 - Extract the candidate's postal address, phone number, and email into contact.street,

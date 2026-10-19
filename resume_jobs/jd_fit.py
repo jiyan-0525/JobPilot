@@ -27,6 +27,16 @@ FIT_TOOL = {
                     "type": "string",
                     "description": "Short label, e.g. 'Strong match', 'Partial match', 'Weak match'",
                 },
+                "job_level": {
+                    "type": "string",
+                    "enum": ["intern", "junior", "mid", "senior", "lead", "unknown"],
+                    "description": "Seniority explicitly required or evidenced by the job description",
+                },
+                "level_fit": {
+                    "type": "string",
+                    "enum": ["good", "stretch", "too_senior", "unknown"],
+                    "description": "Whether the job level fits the candidate",
+                },
                 "matched_skills": {
                     "type": "array",
                     "items": {"type": "string"},
@@ -70,6 +80,8 @@ FIT_TOOL = {
             "required": [
                 "score",
                 "verdict",
+                "job_level",
+                "level_fit",
                 "matched_skills",
                 "missing_skills",
                 "reason_de",
@@ -126,6 +138,8 @@ def normalize_fit(raw: object) -> dict:
     return {
         "score": _score(raw.get("score")),
         "verdict": str(raw.get("verdict") or "").strip(),
+        "job_level": str(raw.get("job_level") or "unknown").strip().lower(),
+        "level_fit": str(raw.get("level_fit") or "unknown").strip().lower(),
         "matched_skills": _strings(raw.get("matched_skills")),
         "missing_skills": _strings(raw.get("missing_skills")),
         "reason_de": str(raw.get("reason_de") or "").strip(),
@@ -159,7 +173,9 @@ def analyze_fit(
     result = run_step_tool(
         role="a technical recruiter assessing how well a candidate fits a job",
         task=(
-            "Compare the CANDIDATE PROFILE with the JOB DESCRIPTION. Give an overall fit "
+            "Compare the CANDIDATE PROFILE with the JOB DESCRIPTION. First assess the candidate's "
+            "career level from demonstrated scope, not years or titles alone, and classify the "
+            "job level. Give an overall fit "
             "score from 0 to 100, a short verdict, the requirements the candidate clearly "
             "satisfies (matched_skills) and the important ones the profile does not show "
             "(missing_skills), plus a one-sentence justification in German and in English. "
@@ -167,11 +183,14 @@ def analyze_fit(
             "learning_plan that closes those gaps, most important first: for each item give "
             "the skill, a priority (high/medium/low), why it matters for this job, how to "
             "learn it, and a rough effort estimate. Ground every point in the profile and the "
-            "job description — never credit skills the candidate has not shown."
+            "job description — never credit skills the candidate has not shown. If the job is "
+            "clearly above the candidate's level, set level_fit='too_senior' and cap the score "
+            "at 35; do not hide this mismatch behind overlapping keywords."
         ),
         expected_output=(
-            "score (0-100), verdict, matched_skills, missing_skills, reason_de, reason_en, "
-            "and a learning_plan of prioritized steps (skill, priority, why, how, effort)."
+            "job_level, level_fit, score (0-100), verdict, matched_skills, missing_skills, "
+            "reason_de, reason_en, and a learning_plan of prioritized steps (skill, priority, "
+            "why, how, effort)."
         ),
         context=[
             f"CANDIDATE PROFILE\n{profile_block(profile)}",

@@ -13,6 +13,7 @@ from resume_jobs.jobs import (
     normalize_job,
     search_corridor,
     search_once,
+    keyword_variants,
 )
 
 
@@ -120,6 +121,21 @@ def test_search_once_builds_params_and_parses():
     assert call["params"]["umkreis"] == 45
     assert call["params"]["veroeffentlichtseit"] == 30
     assert call["headers"]["X-API-Key"] == DEFAULT_API_KEY
+
+
+def test_keyword_variants_translate_german_ai_roles():
+    variants = keyword_variants("KI-Entwickler")
+    assert "KI-Entwickler" in variants
+    assert "AI Engineer" in variants
+    assert "Artificial Intelligence Engineer" in variants
+
+
+def test_search_corridor_queries_role_variants():
+    session = FakeSession(lambda url, params: ({"ergebnisliste": [raw_job(params["was"]) ]}, 200))
+    jobs = search_corridor(keyword="KI-Entwickler", corridor=(("Heilbronn", 45),), http=session)
+    queries = {call["params"]["was"] for call in session.calls}
+    assert {"KI-Entwickler", "AI Engineer"} <= queries
+    assert len(jobs) == len(queries)
 
 
 def _at(job, lat, lon):

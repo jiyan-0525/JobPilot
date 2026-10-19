@@ -20,6 +20,15 @@ def profile_block(profile: dict) -> str:
             lines.append(f"{label}: {value}")
     if profile.get("target_roles"):
         lines.append("Target roles: " + ", ".join(profile["target_roles"]))
+    career_level = profile.get("career_level") or {}
+    if isinstance(career_level, dict) and career_level.get("level"):
+        evidence = "; ".join(career_level.get("evidence") or [])
+        lines.append(
+            f"Assessed career level: {career_level['level']} "
+            f"(confidence {career_level.get('confidence', 0):.2f})"
+        )
+        if evidence:
+            lines.append("Career-level evidence: " + evidence)
     years = profile.get("years_experience")
     if years:
         lines.append(f"Years of experience: {years:g}")
@@ -39,6 +48,7 @@ def profile_block(profile: dict) -> str:
     for exp in profile.get("experience", []):
         lines.append(
             f"- {exp.get('title', '')} @ {exp.get('company', '')} "
+            f"[Industry: {exp.get('industry') or 'not stated'}] "
             f"({exp.get('start', '')}–{exp.get('end', '')})"
         )
         highlights = exp.get("highlights_en") or exp.get("highlights_de") or []

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import base64
 import math
+import re
 import time
 import urllib.parse
 from typing import Any, Iterable, Optional
@@ -40,6 +41,26 @@ CORRIDOR = ((HOME_POSTAL_CODE, 45), ("Stuttgart", 35), ("Baden-Württemberg", No
 # The API's Homeoffice filter (arbeitszeit=ho) returns nothing, so remote jobs
 # are found by keyword instead.
 REMOTE_KEYWORD = "Homeoffice"
+
+
+def keyword_variants(keyword: Optional[str]) -> list[str]:
+    """Return German/English variants for common technical role searches."""
+    original = str(keyword or "").strip()
+    if not original:
+        return []
+    lowered = original.lower()
+    variants = [original]
+    if any(term in lowered for term in ("ki", "künstliche intelligenz", "kuenstliche intelligenz")):
+        variants += ["AI Engineer", "Artificial Intelligence Engineer", "KI Entwickler"]
+    if "ai engineer" in lowered or "artificial intelligence engineer" in lowered:
+        variants += ["KI Entwickler", "Künstliche Intelligenz Entwickler"]
+    if "machine learning" in lowered or "maschinelles lernen" in lowered:
+        variants += ["Machine Learning Engineer", "ML Engineer", "Machine Learning Entwickler"]
+    if "softwareentwickler" in lowered or "softwareentwicklerin" in lowered:
+        variants += ["Software Developer", "Software Engineer"]
+    if "dateningenieur" in lowered or "daten engineer" in lowered:
+        variants += ["Data Engineer", "Dateningenieur"]
+    return list(dict.fromkeys(variant for variant in variants if variant))
 
 
 def _csv(values: Any) -> str:
@@ -195,12 +216,15 @@ def search_corridor(
             if job["id"] not in seen or _closer(job, seen[job["id"]]):
                 seen[job["id"]] = job
 
-    for location, radius in corridor:
-        merge(search_once(keyword=keyword, location=location, radius_km=radius, **kwargs))
+    keywords = keyword_variants(keyword)
+    for search_keyword in keywords or [None]:
+        for location, radius in corridor:
+            merge(search_once(keyword=search_keyword, location=location, radius_km=radius, **kwargs))
 
     if remote:
-        remote_keyword = f"{keyword} {REMOTE_KEYWORD}".strip() if keyword else REMOTE_KEYWORD
-        merge(search_once(keyword=remote_keyword, **kwargs))
+        for search_keyword in keywords or [None]:
+            remote_keyword = f"{search_keyword} {REMOTE_KEYWORD}".strip() if search_keyword else REMOTE_KEYWORD
+            merge(search_once(keyword=remote_keyword, **kwargs))
 
     if include_arbeitnow:
         from resume_jobs.arbeitnow import search as arbeitnow_search
@@ -208,7 +232,8 @@ def search_corridor(
         # Arbeitnow has no geo filter; reuse the corridor's city names so results
         # stay in the area (remote jobs are always kept).
         locations = [str(loc) for loc, _ in corridor if not str(loc).isdigit()] + ["Heilbronn"]
-        merge(arbeitnow_search(keyword=keyword, locations=locations, max_pages=arbeitnow_pages))
+        for search_keyword in keywords or [None]:
+            merge(arbeitnow_search(keyword=search_keyword, locations=locations, max_pages=arbeitnow_pages))
 
     annotate_home_distance(seen.values(), home=home)
     return sorted(seen.values(), key=_distance)

@@ -68,10 +68,15 @@ both German and English.
   "contact": {"email": "", "phone": "", "location": "", "linkedin": "", "github": ""},
   "languages": [{"language": "Deutsch", "level": "B2"}],
   "target_roles": ["Data Engineer"],
-  "years_experience": 5,
+  "years_experience": 4.1,
+  "career_level": {
+    "level": "junior",
+    "confidence": 0.85,
+    "evidence": ["Implemented features with guidance", "No demonstrated team or architecture ownership"]
+  },
   "skills": {"technical": [], "tools": [], "soft": []},
   "experience": [
-    {"title": "", "company": "", "location": "", "start": "", "end": "",
+    {"title": "", "company": "", "location": "", "industry": "", "start": "", "end": "",
      "highlights_de": [], "highlights_en": []}
   ],
   "education": [{"degree": "", "institution": "", "start": "", "end": ""}],
@@ -94,6 +99,13 @@ both German and English.
   `normalize_profile` coerces any missing or garbled field to a safe default.
 - **German details**: the prompt preserves original date text (`03/2021`, `seit 2020`, `heute`),
   detects `source_language`, and emits `summary_de` + `summary_en`.
+- **Career level**: `career_level` is evidence-based. Years of experience and previous titles
+  are not sufficient for a senior classification; demonstrated independent ownership,
+  architecture, mentoring, or leadership is required.
+- **Experience calculation**: `years_experience` is calculated by the application from the
+  dated `experience` entries. Overlapping months count once; `heute`/`present` ends at the
+  current month; entries with unparseable dates are excluded. Each entry also includes the
+  evidence-based `industry` (empty when the resume does not state it).
 
 ---
 
@@ -162,13 +174,16 @@ Both use the step framing from `step.py` (a system prompt from `role`, a user pr
 ```python
 from resume_jobs.match import rank_jobs
 ranked = rank_jobs(profile, jobs, top_n=8)   # enrich=True fetches the shortlist's descriptions
-# -> [{"job_id", "score", "matched_skills", "missing_skills", "reason_de", "reason_en", "job"}, ...]
+# -> [{"job_id", "job_level", "level_fit", "score", "matched_skills", "missing_skills",
+#      "reason_de", "reason_en", "job"}, ...]
 ```
 
-- `prefilter()` scores jobs by keyword overlap (offline, no LLM) and keeps the top `top_n`.
+- `prefilter()` scores jobs by keyword overlap (offline, no LLM) and, for a junior candidate,
+  prefers junior/entry-level postings over senior/lead postings before keeping the top `top_n`.
 - `enrich_jobs()` then fetches full descriptions **only** for the shortlist (details are one request
   per job).
-- one forced-tool call ranks them, bilingual reasons (DE/EN).
+- one forced-tool call ranks them, classifies job level, and marks clear seniority mismatches as
+  `level_fit="too_senior"` with a capped score.
 - Gotcha found live: the prompt must show each job's **id**, or the model returns a title string
   instead of `job_id`. `render.job_block()` now emits `Job id: …`, and `rank_jobs` still has a
   title-substring fallback.

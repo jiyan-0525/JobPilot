@@ -8,6 +8,9 @@ from resume_jobs.match import (
     RANK_MAX_DESCRIPTION,
     RANK_MAX_TOKENS,
     SINGLE_JOB_MAX_DESCRIPTION,
+    filter_jobs_for_profile,
+    is_senior_level_job,
+    senior_candidate_verified,
     prefilter,
     profile_keywords,
     rank_jobs,
@@ -65,6 +68,45 @@ def test_prefilter_keeps_relevant_and_drops_irrelevant():
     assert set(ids) == {"a", "c"}
 
 
+def test_prefilter_prefers_junior_over_senior_when_skills_overlap():
+    profile = {**PROFILE, "career_level": {"level": "junior"}}
+    jobs = [
+        {"id": "senior", "title": "Senior Data Engineer", "description": "Python SQL Docker"},
+        {"id": "junior", "title": "Junior Data Engineer", "description": "Python SQL Docker"},
+    ]
+    assert prefilter(profile, jobs, k=1)[0]["id"] == "junior"
+
+
+def test_junior_profile_excludes_senior_jobs_from_recommendations():
+    profile = {**PROFILE, "career_level": {"level": "junior"}}
+    jobs = [
+        {"id": "senior", "title": "Senior AI Engineer", "description": ""},
+        {"id": "junior", "title": "AI Engineer", "description": ""},
+    ]
+    assert is_senior_level_job(jobs[0])
+    assert [job["id"] for job in filter_jobs_for_profile(profile, jobs)] == ["junior"]
+
+
+def test_senior_requires_strong_evidence_before_senior_jobs_are_allowed():
+    weak_profile = {
+        **PROFILE,
+        "career_level": {"level": "senior", "confidence": 0.99, "evidence": ["4 years experience"]},
+    }
+    strong_profile = {
+        **PROFILE,
+        "career_level": {
+            "level": "senior",
+            "confidence": 0.9,
+            "evidence": ["Owned architecture and mentored the team"],
+        },
+    }
+    jobs = [{"id": "s", "title": "Senior Software Developer", "description": ""}]
+    assert not senior_candidate_verified(weak_profile)
+    assert filter_jobs_for_profile(weak_profile, jobs) == []
+    assert senior_candidate_verified(strong_profile)
+    assert filter_jobs_for_profile(strong_profile, jobs) == jobs
+
+
 def test_rank_jobs_attaches_job_and_drops_unknown_ids():
     payload = {
         "ranking": [
@@ -86,6 +128,9 @@ def test_rank_jobs_attaches_job_and_drops_unknown_ids():
     user = client.requests[0]["messages"][1]["content"]
     assert "CANDIDATE PROFILE" in user and "Data Engineer" in user
     assert "JOBS" in user and "Python Developer" in user
+    task = client.requests[0]["messages"][1]["content"]
+    assert "level_fit='too_senior'" in task
+    assert "maximum 35" in task
 
 
 def test_rank_jobs_keeps_request_under_free_tier_tpm():

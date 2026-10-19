@@ -15,7 +15,7 @@ CONTACT_KEYS = (
     "github",
 )
 SKILL_KEYS = ("technical", "tools", "soft")
-EXPERIENCE_KEYS = ("title", "company", "location", "start", "end")
+EXPERIENCE_KEYS = ("title", "company", "location", "industry", "start", "end")
 EDUCATION_KEYS = ("degree", "institution", "start", "end")
 
 PROFILE_PARAMETERS = {
@@ -44,13 +44,37 @@ PROFILE_PARAMETERS = {
             },
         },
         "target_roles": {"type": "array", "items": {"type": "string"}},
-        "years_experience": {"type": "number", "description": "Relevant years (decimal, 0 if unknown)"},
+        "years_experience": {
+            "type": "number",
+            "description": "Derived from dated experience entries; do not estimate independently",
+        },
+        "career_level": {
+            "type": "object",
+            "description": (
+                "Evidence-based seniority assessment. Judge demonstrated scope and ownership, "
+                "not job-title wording or years alone."
+            ),
+            "properties": {
+                "level": {
+                    "type": "string",
+                    "enum": ["junior", "mid", "senior", "lead", "unknown"],
+                },
+                "confidence": {"type": "number", "description": "Confidence from 0 to 1"},
+                "evidence": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Short evidence copied or summarized from the resume",
+                },
+            },
+            "required": ["level", "confidence", "evidence"],
+        },
         "skills": {
             "type": "object",
             "properties": {key: {"type": "array", "items": {"type": "string"}} for key in SKILL_KEYS},
             "required": list(SKILL_KEYS),
         },
         "experience": {
+            "description": "Work experience only; never include education or study periods",
             "type": "array",
             "items": {
                 "type": "object",
@@ -80,6 +104,7 @@ PROFILE_PARAMETERS = {
     },
     "required": [
         "source_language", "name", "contact", "languages", "target_roles", "years_experience",
+        "career_level",
         "skills", "experience", "education", "certifications", "mobility", "availability",
         "summary_de", "summary_en",
     ],
@@ -115,10 +140,11 @@ def normalize_profile(raw: object) -> dict:
     raw = raw if isinstance(raw, dict) else {}
     contact = raw.get("contact") if isinstance(raw.get("contact"), dict) else {}
     skills = raw.get("skills") if isinstance(raw.get("skills"), dict) else {}
+    career_level = raw.get("career_level") if isinstance(raw.get("career_level"), dict) else {}
     try:
-        years = float(raw.get("years_experience"))
+        career_confidence = max(0.0, min(1.0, float(career_level.get("confidence", 0))))
     except (TypeError, ValueError):
-        years = 0.0
+        career_confidence = 0.0
 
     experience = []
     for item in raw.get("experience") or []:
@@ -131,6 +157,9 @@ def normalize_profile(raw: object) -> dict:
                 }
             )
 
+    from resume_jobs.experience import calculate_years_experience
+
+    years = calculate_years_experience(experience)
     return {
         "source_language": str(raw.get("source_language") or ""),
         "name": str(raw.get("name") or ""),
@@ -142,6 +171,11 @@ def normalize_profile(raw: object) -> dict:
         ],
         "target_roles": _strings(raw.get("target_roles")),
         "years_experience": years,
+        "career_level": {
+            "level": str(career_level.get("level") or "unknown").lower(),
+            "confidence": career_confidence,
+            "evidence": _strings(career_level.get("evidence")),
+        },
         "skills": {key: _strings(skills.get(key)) for key in SKILL_KEYS},
         "experience": experience,
         "education": _objects(raw.get("education"), EDUCATION_KEYS),

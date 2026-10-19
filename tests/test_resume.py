@@ -94,6 +94,7 @@ class FakeClient:
         return self
 
     def create(self, **kwargs):
+        self.last_request = kwargs
         payload = self._payloads[min(self.calls, len(self._payloads) - 1)]
         self.calls += 1
         tool_call = SimpleNamespace(
@@ -129,6 +130,7 @@ def test_normalize_profile_fills_defaults():
     assert out["skills"] == {"technical": [], "tools": [], "soft": []}
     assert out["experience"] == []
     assert out["years_experience"] == 0.0
+    assert out["career_level"] == {"level": "unknown", "confidence": 0.0, "evidence": []}
     assert set(out["contact"]) == {
         "email", "phone", "location", "street", "postal_code", "linkedin", "github"
     }
@@ -150,6 +152,15 @@ def test_parse_profile_valid():
     assert profile["summary_en"].startswith("Data engineer")
     assert profile["raw_text"] == "irgendein Lebenslauf"
     assert client.calls == 1
+
+
+def test_parse_profile_prompt_requires_evidence_based_career_level():
+    client = FakeClient([VALID_PROFILE])
+    parse_profile("resume text", client=client)
+    prompt = client.last_request["messages"][1]["content"]
+    assert "career_level" in prompt
+    assert "demonstrated" in prompt and "responsibilities" in prompt
+    assert "years alone" in prompt
 
 
 def test_parse_profile_raises_on_empty_result():
