@@ -128,6 +128,7 @@ def test_keyword_variants_translate_german_ai_roles():
     assert "KI-Entwickler" in variants
     assert "AI Engineer" in variants
     assert "Artificial Intelligence Engineer" in variants
+    assert "AI Engineer" in keyword_variants("AI Entwickler")
 
 
 def test_search_corridor_queries_role_variants():

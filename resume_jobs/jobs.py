@@ -50,7 +50,10 @@ def keyword_variants(keyword: Optional[str]) -> list[str]:
         return []
     lowered = original.lower()
     variants = [original]
-    if any(term in lowered for term in ("ki", "künstliche intelligenz", "kuenstliche intelligenz")):
+    if any(term in lowered for term in (
+        "ki", "künstliche intelligenz", "kuenstliche intelligenz",
+        "ai entwickler", "ai developer", "ki engineer",
+    )):
         variants += ["AI Engineer", "Artificial Intelligence Engineer", "KI Entwickler"]
     if "ai engineer" in lowered or "artificial intelligence engineer" in lowered:
         variants += ["KI Entwickler", "Künstliche Intelligenz Entwickler"]
