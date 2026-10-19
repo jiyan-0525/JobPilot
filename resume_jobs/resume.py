@@ -13,7 +13,7 @@ from resume_jobs.step import MODEL, run_step_tool
 
 EXTRACTION_TASK = """Extract the resume into the structured profile. Rules:
 - source_language: the resume body language, 'de' or 'en'.
-- target_roles: 1-3 job titles the candidate should apply for (used for job search).
+- target_roles: 1-10 job titles the candidate should apply for (used for job search).
 - Preserve original date text (03/2021, 2020, 'seit 2020', 'heute'/'present'); never invent dates.
 - summary_de in German, summary_en in English (one sentence each).
 - Each experience: 2-4 bullets in highlights_de (German) and highlights_en (English).
