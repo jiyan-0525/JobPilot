@@ -21,7 +21,7 @@ from resume_jobs.cover_letter import (  # noqa: E402
 from resume_jobs.interview import prepare_interview  # noqa: E402
 from resume_jobs.jd_fit import analyze_fit, learning_plan_markdown  # noqa: E402
 from resume_jobs.jobs import HOME_POSTAL_CODE, search_corridor  # noqa: E402
-from resume_jobs.match import filter_jobs_for_profile, rank_jobs  # noqa: E402
+from resume_jobs.match import rank_jobs  # noqa: E402
 from resume_jobs.render import profile_block  # noqa: E402
 from resume_jobs.resume import extract_text, parse_profile  # noqa: E402
 from resume_jobs.store import save_jobs, save_profile  # noqa: E402
@@ -178,6 +178,39 @@ PUBLISHED_OPTIONS = {"Any time": None, "Last 7 days": 7, "Last 30 days": 30}
 def glassdoor_url(keyword: str) -> str:
     """Deep link into Glassdoor's German job search (no public API available)."""
     return "https://www.glassdoor.de/Job/jobs.htm?sc.keyword=" + quote(keyword or "")
+
+
+def filter_jobs_for_profile(profile: dict, jobs: list[dict]) -> list[dict]:
+    """Hide clearly senior jobs for profiles without verified senior evidence."""
+    career_level = profile.get("career_level") or {}
+    evidence = " ".join(str(item).lower() for item in career_level.get("evidence") or [])
+    try:
+        confidence = float(career_level.get("confidence", 0) or 0)
+    except (TypeError, ValueError):
+        confidence = 0.0
+    verified = (
+        str(career_level.get("level") or "").lower() == "senior"
+        and confidence >= 0.85
+        and any(term in evidence for term in (
+            "architecture", "architect", "end-to-end", "end to end", "mentoring",
+            "mentor", "team lead", "leadership", "architektur", "teamleitung",
+        ))
+    )
+    if verified:
+        return jobs
+    markers = (
+        "senior", "lead", "principal", "staff engineer", "teamleitung",
+        "team lead", "technical lead", "tech lead", "fachliche führung",
+        "fachliche leitung", "leitung eines teams",
+    )
+    return [
+        job for job in jobs
+        if not any(marker in " ".join(
+            str(job.get(key) or "").lower()
+            for key in ("title", "occupation", "description")
+        ) for marker in markers)
+    ]
+
 
 for key in (
     "profile", "jobs", "ranked", "job", "interview_md", "cover_de", "cover_en",
