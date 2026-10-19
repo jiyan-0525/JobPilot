@@ -36,7 +36,7 @@ HOME_LATLON = (49.1800320, 9.1425113)
 # Search plan: home plus the wider Stuttgart / Baden-Württemberg area for
 # coverage. NB: omitting umkreis does NOT mean "no limit" — the API then
 # defaults to 25 km, so radius_km is always passed for a real radius.
-CORRIDOR = ((HOME_POSTAL_CODE, 45), ("Stuttgart", 35), ("Baden-Württemberg", None))
+CORRIDOR = ((HOME_POSTAL_CODE, 45), ("Stuttgart", 35))
 
 # The API's Homeoffice filter (arbeitszeit=ho) returns nothing, so remote jobs
 # are found by keyword instead.
@@ -196,6 +196,7 @@ def search_corridor(
     home: tuple[float, float] = HOME_LATLON,
     include_arbeitnow: bool = False,
     arbeitnow_pages: int = 3,
+    max_distance_km: Optional[float] = None,
     **kwargs: Any,
 ) -> list[dict]:
     """Search every corridor entry (plus remote when asked), deduped by id.
@@ -236,7 +237,13 @@ def search_corridor(
             merge(arbeitnow_search(keyword=search_keyword, locations=locations, max_pages=arbeitnow_pages))
 
     annotate_home_distance(seen.values(), home=home)
-    return sorted(seen.values(), key=_distance)
+    jobs = [
+        job for job in seen.values()
+        if max_distance_km is None
+        or job["distance_km"] is None
+        or job["distance_km"] <= max_distance_km
+    ]
+    return sorted(jobs, key=_distance)
 
 
 def enrich_jobs(

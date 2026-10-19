@@ -431,13 +431,13 @@ with tab_jobs:
     if search_clicked:
         offer_types = tuple(OFFER_OPTIONS[o] for o in offers if o in OFFER_OPTIONS) or (1,)
         remote = REMOTE_LABEL in offers
-        corridor = ((HOME_POSTAL_CODE, radius), ("Stuttgart", max(10, radius - 10)), ("Baden-Württemberg", None))
+        corridor = ((HOME_POSTAL_CODE, radius), ("Stuttgart", radius))
         with st.spinner("Searching the corridor…"):
             try:
                 st.session_state.jobs = search_corridor(
                     keyword=keyword or None, corridor=corridor, remote=remote, offer_types=offer_types,
                     published_within=PUBLISHED_OPTIONS[published], size=50,
-                    include_arbeitnow=include_arbeitnow)
+                    include_arbeitnow=include_arbeitnow, max_distance_km=radius)
                 st.session_state.ranked = None
                 st.session_state.job = None
             except Exception as exc:

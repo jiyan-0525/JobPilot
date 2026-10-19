@@ -51,7 +51,7 @@ with st.form("search_form"):
 if submitted:
     offer_types = tuple(OFFER_OPTIONS[l] for l in selected_offers if l in OFFER_OPTIONS) or (1,)
     remote = REMOTE_LABEL in selected_offers
-    corridor = ((HOME_POSTAL_CODE, radius), ("Stuttgart", max(10, radius - 10)), ("Baden-Württemberg", None))
+    corridor = ((HOME_POSTAL_CODE, radius), ("Stuttgart", radius))
     with st.spinner("Searching the corridor..."):
         try:
             st.session_state.jobs = search_corridor(
@@ -61,6 +61,7 @@ if submitted:
                 offer_types=offer_types,
                 published_within=PUBLISHED_OPTIONS[published_label],
                 size=50,
+                max_distance_km=radius,
             )
         except Exception as exc:  # report explicitly, never silent
             st.error(f"Search failed: {exc}")

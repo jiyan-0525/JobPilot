@@ -176,6 +176,19 @@ def test_search_corridor_marks_jobs_without_coordinates():
     assert jobs[0]["distance_km"] is None
 
 
+def test_search_corridor_applies_strict_max_distance_after_merging():
+    near = _at(raw_job("R-1"), 49.1805, 9.1430)
+    far = _at(raw_job("R-2"), 50.5, 10.0)
+    session = FakeSession(lambda url, params: ({"ergebnisliste": [near, far]}, 200))
+    jobs = search_corridor(
+        keyword="Data Engineer",
+        corridor=(("Heilbronn", 45),),
+        max_distance_km=45,
+        http=session,
+    )
+    assert [job["id"] for job in jobs] == ["R-1"]
+
+
 # ---- details ---------------------------------------------------------------
 
 def test_get_job_details_encodes_ref_and_returns_description():
