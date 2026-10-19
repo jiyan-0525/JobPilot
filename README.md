@@ -84,7 +84,7 @@ pytest tests/
 - **Web UI**: Streamlit
 - **PDF Extraction**: `pypdf`
 - **CI/CD**: GitHub Actions
-- **Testing**: pytest (no API key or network required)
+- **Testing**: pytest
 
 ---
 
