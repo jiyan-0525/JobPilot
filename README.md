@@ -55,10 +55,6 @@ Create a `.env` file in the project root:
 cp .env.example .env   # or create .env directly
 ```
 
-```ini
-GROQ_API_KEY=your_key_from_https://console.groq.com/keys
-GROQ_MODEL=openai/gpt-oss-120b        # optional; defaults to openai/gpt-oss-120b
-```
 
 > **Note**: Job search connects to the public Bundesagentur für Arbeit API and does not require an external key.
 
@@ -78,15 +74,6 @@ streamlit run jobs_app.py      # Job search tab
 ```bash
 pytest tests/
 ```
-
----
-
-## ⚙️ Configuration & APIs
-
-- **Groq AI Engine** → Ultra-fast OpenAI-compatible inference with open-weights models.
-- **`GROQ_MODEL` Override** → Set to lighter models to bypass daily token caps on the free tier without modifying code.
-- **Bundesagentur für Arbeit Jobsuche API** → Official German employment service API (`X-API-Key: jobboerse-jobsuche`), free and public with no registration required.
-- **Arbeitnow API** → Integrated client available as a secondary job data source.
 
 ---
 
