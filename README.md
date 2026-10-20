@@ -96,6 +96,7 @@ pytest tests/
 - **AI Engine**: Groq
 - **Web UI**: Streamlit
 - **PDF Extraction**: `pypdf`
+- **LangChain RAG**: `langchain` + `langchain-community` + `faiss-cpu` (`pdf_rag.py`)
 - **CI/CD**: GitHub Actions
 - **Testing**: pytest (no API key or network required)
 
@@ -122,7 +123,8 @@ JobPilot/
 │   ├── learning_plan.py    # build_learning_plan() for skill gaps
 │   └── store.py            # Local JSON persistence (profiles, job caches)
 ├── rag.py                  # Question bank RAG module
-├── tests/                  # Complete offline test suite (46 tests)
+├── pdf_rag.py              # LangChain RAG: PDF -> chunks -> FAISS -> retrieve
+├── tests/                  # Complete offline test suite (68 tests)
 ├── requirements.txt
 └── RESUME_JOBS.md          # Full design specification & API notes
 ```
@@ -138,6 +140,7 @@ JobPilot/
 - [x] **Interview Prep**: Role-tailored questions, answer strategies, and gap analysis
 - [x] **Cover Letter**: Automated German *Anschreiben* and English cover letters
 - [x] **Fit Check**: Paste any JD for fit score, missing skills, and learning plan
+- [x] **LangChain RAG PDF pipeline**: PDF → chunks → FAISS vector store → retrieve → LLM (`pdf_rag.py`)
 
 ### Planned Enhancements
 - [ ] UI toggle for Arbeitnow as an alternative job board

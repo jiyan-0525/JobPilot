@@ -9,7 +9,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 sys.path.append(".")
-from resume_jobs import extract_text, parse_profile  # noqa: E402
+from resume_jobs import extract_text, parse_profile, extract_profile_with_rag  # noqa: E402
 from resume_jobs.store import save_profile  # noqa: E402
 
 load_dotenv()
@@ -37,6 +37,13 @@ if uploaded is not None:
                     st.session_state.profile = parse_profile(text)
                 except Exception as exc:  # report explicitly, never silent
                     st.error(f"Parsing failed: {exc}")
+
+        if st.button("Analyze with LangChain RAG", type="secondary"):
+            with st.spinner("LangChain RAG is extracting the structured profile..."):
+                try:
+                    st.session_state.profile = extract_profile_with_rag(uploaded)
+                except Exception as exc:  # report explicitly, never silent
+                    st.error(f"RAG parsing failed: {exc}")
 
 profile = st.session_state.profile
 

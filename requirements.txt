@@ -17,5 +17,11 @@ requests==2.33.1
 fastembed==0.9.0
 numpy==2.4.4
 
+# LangChain + RAG for PDF reading
+langchain==0.3.27
+langchain-community==0.3.27
+langchain-text-splitters==0.3.11
+faiss-cpu==1.12.0
+
 # Environment variables
 python-dotenv==1.2.2
