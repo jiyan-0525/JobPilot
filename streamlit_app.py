@@ -1,6 +1,6 @@
 """JobPilot — the whole flow in one Streamlit app.
 
-Tabs: Resume (incl. Fit check) → Jobs → Match → Interview → Cover letter.
+Tabs: Resume → Jobs → Match (incl. Fit check) → Interview → Cover letter.
 Each step reuses the `resume_jobs` library; state is carried in session_state.
 
 Run: .venv/bin/python -m streamlit run streamlit_app.py
@@ -212,9 +212,169 @@ def filter_jobs_for_profile(profile: dict, jobs: list[dict]) -> list[dict]:
     ]
 
 
+def job_as_description(job: dict) -> str:
+    """Render a ranked job as job-description text for the fit check."""
+    header = " @ ".join(
+        part for part in (job.get("title") or "", job.get("company") or "") if part
+    )
+    parts = [
+        header,
+        f"Location: {job['location']}" if job.get("location") else "",
+        f"Offer type: {job['offer_type']}" if job.get("offer_type") else "",
+        str(job.get("description") or ""),
+    ]
+    return "\n".join(part for part in parts if part).strip()
+
+
+def render_fit_check():
+    """Fit-check a ranked job or a pasted job description and show the learning plan."""
+    section("🧩", "Fit check")
+    if st.session_state.profile:
+        st.caption(f"Comparing against **{st.session_state.profile['name'] or 'your profile'}** "
+                   "— pick a job from the score list or paste a job posting.")
+    else:
+        st.caption("Upload a PDF or paste resume text above, then analyze it before generating a cover letter.")
+
+    ranked = st.session_state.ranked or []
+    selected_job = None
+    paste_option = "— Paste a different job description —"
+    if ranked:
+        # Reset the picker when a new ranking changes the number of entries.
+        if st.session_state.get("fit_choice_count") != len(ranked):
+            st.session_state.fit_job_choice = 0
+            st.session_state.fit_choice_count = len(ranked)
+        labels = [
+            f"{r.get('score', 0):.0f} · {r['job'].get('title', '')} @ {r['job'].get('company', '')}"
+            for r in ranked
+        ]
+        choice = st.selectbox(
+            "Choose a job from the score list",
+            options=list(range(len(ranked) + 1)),
+            format_func=lambda i: labels[i] if i < len(ranked) else paste_option,
+            key="fit_job_choice",
+        )
+        if choice < len(ranked):
+            selected_job = ranked[choice]["job"]
+
+    if selected_job:
+        jd_text = job_as_description(selected_job)
+        st.caption(f"Analyzing **{selected_job.get('title', '')}** @ "
+                   f"**{selected_job.get('company', '')}** — "
+                   f"{selected_job.get('location') or 'location not stated'}")
+        with st.expander("Job description"):
+            st.write(jd_text or "No description available for this job.")
+        if not jd_text:
+            st.warning("This job has no description yet — pick another job or paste the description instead.")
+    else:
+        with st.expander("Job description — paste job description here", expanded=not ranked):
+            jd_text = st.text_area(
+                "Job description",
+                height=200,
+                key="jd_text",
+                placeholder="Paste the full job advertisement here…",
+                label_visibility="collapsed",
+            )
+
+    target_key = str(selected_job.get("id")) if selected_job else "paste"
+    if st.session_state.profile:
+        if st.button("Analyze fit for this job", type="primary", disabled=not jd_text.strip()):
+            with st.spinner("Comparing the job description with your resume…"):
+                try:
+                    st.session_state.fit_result = analyze_fit(st.session_state.profile, jd_text)
+                    st.session_state.fit_target = target_key
+                except Exception as exc:
+                    st.error(f"Fit check failed: {exc}")
+    elif jd_text.strip():
+        st.info("Analyze a PDF or pasted resume text above before generating a cover letter.")
+
+    if jd_text.strip() and st.session_state.profile:
+        st.markdown("##### ✉️ Generate a cover letter from this job description")
+        jd_cover_c1, jd_cover_c2 = st.columns(2)
+        if jd_cover_c1.button("🇩🇪 Generate Anschreiben", type="primary", use_container_width=True):
+            with st.spinner("Schreibe Anschreiben…"):
+                try:
+                    st.session_state.jd_cover_de = write_cover_letter_from_jd(
+                        st.session_state.profile or {},
+                        jd_text,
+                        language="de",
+                    )
+                except Exception as exc:
+                    st.error(f"Cover letter generation failed: {exc}")
+        if jd_cover_c2.button("🇬🇧 Generate cover letter", type="primary", use_container_width=True):
+            with st.spinner("Writing cover letter…"):
+                try:
+                    st.session_state.jd_cover_en = write_cover_letter_from_jd(
+                        st.session_state.profile or {},
+                        jd_text,
+                        language="en",
+                    )
+                except Exception as exc:
+                    st.error(f"Cover letter generation failed: {exc}")
+
+        if st.session_state.jd_cover_de:
+            st.markdown(st.session_state.jd_cover_de)
+            st.download_button(
+                "⬇️ anschreiben_from_jd_de.md",
+                st.session_state.jd_cover_de,
+                "anschreiben_from_jd_de.md",
+                "text/markdown",
+            )
+        if st.session_state.jd_cover_en:
+            st.markdown(st.session_state.jd_cover_en)
+            st.download_button(
+                "⬇️ cover_letter_from_jd_en.md",
+                st.session_state.jd_cover_en,
+                "cover_letter_from_jd_en.md",
+                "text/markdown",
+            )
+    elif jd_text.strip():
+        st.info("Cover letter generation needs your resume so it can be grounded in your experience.")
+
+    fit = st.session_state.fit_result
+    if fit and st.session_state.profile and st.session_state.fit_target == target_key:
+        m1, m2 = st.columns(2)
+        m1.metric("Fit score", f"{fit['score']:.0f} / 100")
+        m2.metric("Verdict", fit["verdict"] or "—")
+
+        c1, c2 = st.columns(2)
+        c1.markdown(
+            '<div class="kp-card">'
+            f'<div class="k">Matched ({len(fit["matched_skills"])})</div>'
+            f'<div class="s">{html.escape(", ".join(fit["matched_skills"]) or "—")}</div>'
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        c2.markdown(
+            '<div class="kp-card">'
+            f'<div class="k">Missing ({len(fit["missing_skills"])})</div>'
+            f'<div class="s">{html.escape(", ".join(fit["missing_skills"]) or "—")}</div>'
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        if fit["reason_de"]:
+            st.markdown(f"**🇩🇪 {fit['reason_de']}**")
+        if fit["reason_en"]:
+            st.markdown(f"**🇬🇧 {fit['reason_en']}**")
+
+        plan = fit.get("learning_plan") or []
+        if plan:
+            st.markdown("##### 📚 Learning plan — what to learn before applying")
+            st.dataframe(
+                [{"priority": step["priority"], "learn": step["skill"],
+                  "why it matters": step["why"], "how to learn": step["how"],
+                  "effort": step["effort"]} for step in plan],
+                width="stretch", hide_index=True,
+            )
+            st.download_button(
+                "⬇️ learning_plan.md",
+                learning_plan_markdown(fit),
+                "learning_plan.md", "text/markdown")
+
+
 for key in (
     "profile", "jobs", "ranked", "job", "interview_md", "cover_de", "cover_en",
-    "fit_result", "jd_cover_de", "jd_cover_en",
+    "fit_result", "fit_target", "jd_cover_de", "jd_cover_en",
 ):
     st.session_state.setdefault(key, None)
 
@@ -294,115 +454,6 @@ with tab_resume:
                            "profile.json", "application/json", use_container_width=True)
         if c2.button("💾 Save profile", use_container_width=True):
             st.success(f"Saved: {save_profile(profile)}")
-
-    section("🧩", "Fit check")
-    if st.session_state.profile:
-        st.caption(f"Comparing against **{st.session_state.profile['name'] or 'your profile'}** "
-                   "— paste a job posting to see how well it matches.")
-    else:
-        st.caption("Upload a PDF or paste resume text above, then analyze it before generating a cover letter.")
-
-    with st.expander("Job description — paste job description here"):
-        jd_text = st.text_area(
-            "Job description",
-            height=200,
-            key="jd_text",
-            placeholder="Paste the full job advertisement here…",
-            label_visibility="collapsed",
-        )
-    if st.session_state.profile:
-        if st.button("Analyze fit", type="primary", disabled=not jd_text.strip()):
-            with st.spinner("Comparing the job description with your resume…"):
-                try:
-                    st.session_state.fit_result = analyze_fit(st.session_state.profile, jd_text)
-                except Exception as exc:
-                    st.error(f"Fit check failed: {exc}")
-    elif jd_text.strip():
-        st.info("Analyze a PDF or pasted resume text above before generating a cover letter.")
-
-    if jd_text.strip() and st.session_state.profile:
-        st.markdown("##### ✉️ Generate a cover letter from this job description")
-        jd_cover_c1, jd_cover_c2 = st.columns(2)
-        if jd_cover_c1.button("🇩🇪 Generate Anschreiben", type="primary", use_container_width=True):
-            with st.spinner("Schreibe Anschreiben…"):
-                try:
-                    st.session_state.jd_cover_de = write_cover_letter_from_jd(
-                        st.session_state.profile or {},
-                        jd_text,
-                        language="de",
-                    )
-                except Exception as exc:
-                    st.error(f"Cover letter generation failed: {exc}")
-        if jd_cover_c2.button("🇬🇧 Generate cover letter", type="primary", use_container_width=True):
-            with st.spinner("Writing cover letter…"):
-                try:
-                    st.session_state.jd_cover_en = write_cover_letter_from_jd(
-                        st.session_state.profile or {},
-                        jd_text,
-                        language="en",
-                    )
-                except Exception as exc:
-                    st.error(f"Cover letter generation failed: {exc}")
-
-        if st.session_state.jd_cover_de:
-            st.markdown(st.session_state.jd_cover_de)
-            st.download_button(
-                "⬇️ anschreiben_from_jd_de.md",
-                st.session_state.jd_cover_de,
-                "anschreiben_from_jd_de.md",
-                "text/markdown",
-            )
-        if st.session_state.jd_cover_en:
-            st.markdown(st.session_state.jd_cover_en)
-            st.download_button(
-                "⬇️ cover_letter_from_jd_en.md",
-                st.session_state.jd_cover_en,
-                "cover_letter_from_jd_en.md",
-                "text/markdown",
-            )
-    elif jd_text.strip():
-        st.info("Cover letter generation needs your resume so it can be grounded in your experience.")
-
-    fit = st.session_state.fit_result
-    if fit and st.session_state.profile:
-            m1, m2 = st.columns(2)
-            m1.metric("Fit score", f"{fit['score']:.0f} / 100")
-            m2.metric("Verdict", fit["verdict"] or "—")
-
-            c1, c2 = st.columns(2)
-            c1.markdown(
-                '<div class="kp-card">'
-                f'<div class="k">Matched ({len(fit["matched_skills"])})</div>'
-                f'<div class="s">{html.escape(", ".join(fit["matched_skills"]) or "—")}</div>'
-                "</div>",
-                unsafe_allow_html=True,
-            )
-            c2.markdown(
-                '<div class="kp-card">'
-                f'<div class="k">Missing ({len(fit["missing_skills"])})</div>'
-                f'<div class="s">{html.escape(", ".join(fit["missing_skills"]) or "—")}</div>'
-                "</div>",
-                unsafe_allow_html=True,
-            )
-
-            if fit["reason_de"]:
-                st.markdown(f"**🇩🇪 {fit['reason_de']}**")
-            if fit["reason_en"]:
-                st.markdown(f"**🇬🇧 {fit['reason_en']}**")
-
-            plan = fit.get("learning_plan") or []
-            if plan:
-                st.markdown("##### 📚 Learning plan — what to learn before applying")
-                st.dataframe(
-                    [{"priority": step["priority"], "learn": step["skill"],
-                      "why it matters": step["why"], "how to learn": step["how"],
-                      "effort": step["effort"]} for step in plan],
-                    width="stretch", hide_index=True,
-                )
-                st.download_button(
-                    "⬇️ learning_plan.md",
-                    learning_plan_markdown(fit),
-                    "learning_plan.md", "text/markdown")
 
 # ---- 2 · Jobs -------------------------------------------------------------
 with tab_jobs:
@@ -504,6 +555,8 @@ with tab_match:
                         "score", min_value=0, max_value=100, format="%d"),
                     "open": st.column_config.LinkColumn("open", display_text="Open ↗"),
                 })
+
+        render_fit_check()
 
         # Pick from every fetched job: the shortlist is just the top of the list,
         # so a job the ranking skipped is still selectable.

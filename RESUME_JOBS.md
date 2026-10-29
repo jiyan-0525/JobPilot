@@ -13,7 +13,7 @@ built on Groq + GPT-OSS 120B.
 | 2 Job search | profile → real job postings | `resume_jobs/jobs.py` (Bundesagentur für Arbeit Jobsuche API) | ✅ done |
 | 3 Matching | score/rank profile ∩ job description | `resume_jobs/match.py` (keyword prefilter + LLM ranking) | ✅ done |
 | 4 Interview prep | generate DE/EN interview questions for a job | `resume_jobs/interview.py` (LLM step; question-bank RAG optional) | ✅ done |
-| 5 Fit check | paste a JD → fit score + gaps → DE/EN learning plan | `resume_jobs/match.py` (`score_job`) + `resume_jobs/learning_plan.py` | ✅ done |
+| 5 Fit check | choose a ranked job or paste a JD → fit score + gaps → DE/EN learning plan | `resume_jobs/match.py` (`score_job`) + `resume_jobs/learning_plan.py` | ✅ done |
 
 Steps 3 and 4 are built on `resume_jobs/step.py`, a small **role + task + expected_output +
 context** step framing: `run_step` for prose, `run_step_tool` for structured output.
