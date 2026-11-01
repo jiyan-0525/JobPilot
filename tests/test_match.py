@@ -133,6 +133,36 @@ def test_rank_jobs_attaches_job_and_drops_unknown_ids():
     assert "maximum 35" in task
 
 
+def test_rank_jobs_coerces_garbled_llm_output():
+    """A bad generation must degrade to sane defaults, not crash the UI."""
+    payload = {
+        "ranking": [
+            {
+                "job_id": "a",
+                "score": "88",
+                "job_level": "SENIOR",
+                "level_fit": "TOO_SENIOR",
+                "matched_skills": "Python",
+                "missing_skills": None,
+                "reason_de": " passt ",
+                "reason_en": None,
+            },
+            "not a dict",
+        ]
+    }
+    ranked = rank_jobs(PROFILE, JOBS, client=FakeToolClient(payload), top_n=5, enrich=False)
+
+    entry = ranked[0]
+    assert entry["score"] == 88.0
+    assert entry["job_level"] == "senior"
+    assert entry["level_fit"] == "too_senior"
+    assert entry["matched_skills"] == ["Python"]
+    assert entry["missing_skills"] == []
+    assert entry["reason_de"] == "passt"
+    assert entry["reason_en"] == ""
+    assert len(ranked) == 1
+
+
 def test_rank_jobs_keeps_request_under_free_tier_tpm():
     """Free tier caps prompt + max_tokens at 8000 tokens/minute (HTTP 413)."""
     jobs = [

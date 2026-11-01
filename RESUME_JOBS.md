@@ -13,7 +13,7 @@ built on Groq + GPT-OSS 120B.
 | 2 Job search | profile → real job postings | `resume_jobs/jobs.py` (Bundesagentur für Arbeit Jobsuche API) | ✅ done |
 | 3 Matching | score/rank profile ∩ job description | `resume_jobs/match.py` (keyword prefilter + LLM ranking) | ✅ done |
 | 4 Interview prep | generate DE/EN interview questions for a job | `resume_jobs/interview.py` (LLM step; question-bank RAG optional) | ✅ done |
-| 5 Fit check | choose a ranked job or paste a JD → fit score + gaps → DE/EN learning plan | `resume_jobs/match.py` (`score_job`) + `resume_jobs/learning_plan.py` | ✅ done |
+| 5 Fit check | choose a ranked job or paste a JD → fit score + gaps → DE/EN learning plan | `resume_jobs/jd_fit.py` (app path) · `match.score_job` + `learning_plan.py` (library path) | ✅ done |
 
 Steps 3 and 4 are built on `resume_jobs/step.py`, a small **role + task + expected_output +
 context** step framing: `run_step` for prose, `run_step_tool` for structured output.
@@ -216,6 +216,9 @@ regenerated on its own. Each is grounded strictly in the resume (greeting/sign-o
 
 ### Fit check — `match.score_job` + `learning_plan.py`
 
+> The Streamlit Fit Check uses `jd_fit.analyze_fit` (one structured call returning the score,
+> gaps, and the plan). `score_job` + `build_learning_plan` remain the two-step library path.
+
 The tab after Cover letter in the multi-tab app (`streamlit_app.py`): resume upload/paste + pasted JD.
 `score_job(profile, job)` fit-checks one posting — it reuses
 `rank_jobs` on a single job (a `SINGLE_JOB_MAX_DESCRIPTION` budget keeps the full JD in context)
@@ -255,10 +258,10 @@ bilingual (DE/EN) study plan: prioritised gaps plus ordered, time-boxed learning
 
 ## Next steps
 
-5. **UI**: add matching, interview, and cover letter to the Streamlit app (tabs: Upload / Jobs /
-   Match / Interview / Cover letter) — they are library functions with offline tests today.
-6. **Question bank (optional)**: a German question-bank corpus, wired into `gather_question_bank()`
-   → `prepare_interview`; retrieval uses `rag.py`.
+- [x] **UI**: matching, interview, cover letter, and fit check are all in `streamlit_app.py`
+  (tabs: Resume / Jobs / Match / Interview / Cover letter).
+- [ ] **Question bank (optional)**: a German question-bank corpus, wired into `gather_question_bank()`
+  → `prepare_interview`; retrieval uses `rag.py`.
 
 ## Explicitly out of scope
 

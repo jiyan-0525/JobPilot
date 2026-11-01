@@ -27,6 +27,14 @@ def test_education_entries_do_not_count_as_work_experience():
     assert calculate_years_experience(entries) == 1.0
 
 
+def test_job_titles_that_mention_a_degree_still_count_as_work():
+    entries = [
+        {"title": "Master Data Engineer", "company": "ACME",
+         "start": "01/2020", "end": "12/2023"},
+    ]
+    assert calculate_years_experience(entries) == 4.0
+
+
 def test_profile_prompt_render_includes_industry():
     block = profile_block({
         "experience": [{

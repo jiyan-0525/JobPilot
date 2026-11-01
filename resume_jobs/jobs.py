@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import base64
 import math
-import re
 import time
 import urllib.parse
 from typing import Any, Iterable, Optional

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Optional
 
+from resume_jobs.coerce import choice, score_0_100, string_list
 from resume_jobs.render import job_block, profile_block
 from resume_jobs.step import MODEL, run_step_tool
 
@@ -86,15 +87,22 @@ def _job_text(job: dict) -> str:
     ).lower()
 
 
+# Wording that marks a posting as senior-level ownership. Kept in one place so
+# the shortlist filter and the level bias can never drift apart.
+SENIOR_MARKERS = (
+    "senior", "lead", "principal", "staff engineer", "teamleitung",
+    "team lead", "technical lead", "tech lead", "fachliche führung",
+    "fachliche leitung", "leitung eines teams",
+)
+LEADERSHIP_MARKERS = ("lead", "director", "head of", "principal")
+RANKED_LEVELS = ("intern", "junior", "mid", "senior", "lead", "unknown")
+LEVEL_FITS = ("good", "stretch", "too_senior", "unknown")
+
+
 def is_senior_level_job(job: dict) -> bool:
     """Return whether a posting explicitly targets senior-level ownership."""
     text = _job_text(job)
-    markers = (
-        "senior", "lead", "principal", "staff engineer", "teamleitung",
-        "team lead", "technical lead", "tech lead", "fachliche führung",
-        "fachliche leitung", "leitung eines teams",
-    )
-    return any(marker in text for marker in markers)
+    return any(marker in text for marker in SENIOR_MARKERS)
 
 
 def senior_candidate_verified(profile: dict) -> bool:
@@ -130,7 +138,7 @@ def _level_bias(profile: dict, job: dict) -> int:
     if senior_candidate_verified(profile):
         return 0
     text = _job_text(job)
-    if any(marker in text for marker in ("lead", "director", "head of", "principal")):
+    if any(marker in text for marker in LEADERSHIP_MARKERS):
         return -120
     if "senior" in text:
         return -100
@@ -221,11 +229,26 @@ def rank_jobs(
         return None
 
     ranked: list[dict] = []
-    for entry in result.get("ranking", []):
+    entries = result.get("ranking") if isinstance(result, dict) else None
+    for entry in entries if isinstance(entries, list) else []:
+        if not isinstance(entry, dict):
+            continue
         job = resolve(entry.get("job_id"))
         if job is None:
             continue
-        ranked.append({**entry, "job": job, "job_id": job["id"]})
+        ranked.append(
+            {
+                "job_id": job["id"],
+                "score": score_0_100(entry.get("score")),
+                "job_level": choice(entry.get("job_level"), RANKED_LEVELS, "unknown"),
+                "level_fit": choice(entry.get("level_fit"), LEVEL_FITS, "unknown"),
+                "matched_skills": string_list(entry.get("matched_skills")),
+                "missing_skills": string_list(entry.get("missing_skills")),
+                "reason_de": str(entry.get("reason_de") or "").strip(),
+                "reason_en": str(entry.get("reason_en") or "").strip(),
+                "job": job,
+            }
+        )
     return ranked
 
 

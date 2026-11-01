@@ -21,7 +21,7 @@ from resume_jobs.cover_letter import (  # noqa: E402
 from resume_jobs.interview import prepare_interview  # noqa: E402
 from resume_jobs.jd_fit import analyze_fit, learning_plan_markdown  # noqa: E402
 from resume_jobs.jobs import HOME_POSTAL_CODE, search_corridor  # noqa: E402
-from resume_jobs.match import rank_jobs  # noqa: E402
+from resume_jobs.match import filter_jobs_for_profile, rank_jobs  # noqa: E402
 from resume_jobs.render import profile_block  # noqa: E402
 from resume_jobs.resume import extract_text, parse_profile  # noqa: E402
 from resume_jobs.store import save_jobs, save_profile  # noqa: E402
@@ -180,38 +180,6 @@ def glassdoor_url(keyword: str) -> str:
     return "https://www.glassdoor.de/Job/jobs.htm?sc.keyword=" + quote(keyword or "")
 
 
-def filter_jobs_for_profile(profile: dict, jobs: list[dict]) -> list[dict]:
-    """Hide clearly senior jobs for profiles without verified senior evidence."""
-    career_level = profile.get("career_level") or {}
-    evidence = " ".join(str(item).lower() for item in career_level.get("evidence") or [])
-    try:
-        confidence = float(career_level.get("confidence", 0) or 0)
-    except (TypeError, ValueError):
-        confidence = 0.0
-    verified = (
-        str(career_level.get("level") or "").lower() == "senior"
-        and confidence >= 0.85
-        and any(term in evidence for term in (
-            "architecture", "architect", "end-to-end", "end to end", "mentoring",
-            "mentor", "team lead", "leadership", "architektur", "teamleitung",
-        ))
-    )
-    if verified:
-        return jobs
-    markers = (
-        "senior", "lead", "principal", "staff engineer", "teamleitung",
-        "team lead", "technical lead", "tech lead", "fachliche führung",
-        "fachliche leitung", "leitung eines teams",
-    )
-    return [
-        job for job in jobs
-        if not any(marker in " ".join(
-            str(job.get(key) or "").lower()
-            for key in ("title", "occupation", "description")
-        ) for marker in markers)
-    ]
-
-
 def job_as_description(job: dict) -> str:
     """Render a ranked job as job-description text for the fit check."""
     header = " @ ".join(
@@ -233,7 +201,7 @@ def render_fit_check():
         st.caption(f"Comparing against **{st.session_state.profile['name'] or 'your profile'}** "
                    "— pick a job from the score list or paste a job posting.")
     else:
-        st.caption("Upload a PDF or paste resume text above, then analyze it before generating a cover letter.")
+        st.caption("Upload a PDF or paste resume text above, then analyze it before running the fit check.")
 
     ranked = st.session_state.ranked or []
     selected_job = None
@@ -285,48 +253,50 @@ def render_fit_check():
                 except Exception as exc:
                     st.error(f"Fit check failed: {exc}")
     elif jd_text.strip():
-        st.info("Analyze a PDF or pasted resume text above before generating a cover letter.")
+        st.info("Analyze a PDF or pasted resume text above before running the fit check.")
 
     if jd_text.strip() and st.session_state.profile:
-        st.markdown("##### ✉️ Generate a cover letter from this job description")
-        jd_cover_c1, jd_cover_c2 = st.columns(2)
-        if jd_cover_c1.button("🇩🇪 Generate Anschreiben", type="primary", use_container_width=True):
-            with st.spinner("Schreibe Anschreiben…"):
-                try:
-                    st.session_state.jd_cover_de = write_cover_letter_from_jd(
-                        st.session_state.profile or {},
-                        jd_text,
-                        language="de",
-                    )
-                except Exception as exc:
-                    st.error(f"Cover letter generation failed: {exc}")
-        if jd_cover_c2.button("🇬🇧 Generate cover letter", type="primary", use_container_width=True):
-            with st.spinner("Writing cover letter…"):
-                try:
-                    st.session_state.jd_cover_en = write_cover_letter_from_jd(
-                        st.session_state.profile or {},
-                        jd_text,
-                        language="en",
-                    )
-                except Exception as exc:
-                    st.error(f"Cover letter generation failed: {exc}")
+        # Collapsed by default; reopens automatically while a letter exists.
+        has_letter = bool(st.session_state.jd_cover_de or st.session_state.jd_cover_en)
+        with st.expander("✉️ Generate a cover letter from this job description", expanded=has_letter):
+            jd_cover_c1, jd_cover_c2 = st.columns(2)
+            if jd_cover_c1.button("🇩🇪 Generate Anschreiben", type="primary", use_container_width=True):
+                with st.spinner("Schreibe Anschreiben…"):
+                    try:
+                        st.session_state.jd_cover_de = write_cover_letter_from_jd(
+                            st.session_state.profile or {},
+                            jd_text,
+                            language="de",
+                        )
+                    except Exception as exc:
+                        st.error(f"Cover letter generation failed: {exc}")
+            if jd_cover_c2.button("🇬🇧 Generate cover letter", type="primary", use_container_width=True):
+                with st.spinner("Writing cover letter…"):
+                    try:
+                        st.session_state.jd_cover_en = write_cover_letter_from_jd(
+                            st.session_state.profile or {},
+                            jd_text,
+                            language="en",
+                        )
+                    except Exception as exc:
+                        st.error(f"Cover letter generation failed: {exc}")
 
-        if st.session_state.jd_cover_de:
-            st.markdown(st.session_state.jd_cover_de)
-            st.download_button(
-                "⬇️ anschreiben_from_jd_de.md",
-                st.session_state.jd_cover_de,
-                "anschreiben_from_jd_de.md",
-                "text/markdown",
-            )
-        if st.session_state.jd_cover_en:
-            st.markdown(st.session_state.jd_cover_en)
-            st.download_button(
-                "⬇️ cover_letter_from_jd_en.md",
-                st.session_state.jd_cover_en,
-                "cover_letter_from_jd_en.md",
-                "text/markdown",
-            )
+            if st.session_state.jd_cover_de:
+                st.markdown(st.session_state.jd_cover_de)
+                st.download_button(
+                    "⬇️ anschreiben_from_jd_de.md",
+                    st.session_state.jd_cover_de,
+                    "anschreiben_from_jd_de.md",
+                    "text/markdown",
+                )
+            if st.session_state.jd_cover_en:
+                st.markdown(st.session_state.jd_cover_en)
+                st.download_button(
+                    "⬇️ cover_letter_from_jd_en.md",
+                    st.session_state.jd_cover_en,
+                    "cover_letter_from_jd_en.md",
+                    "text/markdown",
+                )
     elif jd_text.strip():
         st.info("Cover letter generation needs your resume so it can be grounded in your experience.")
 
@@ -570,12 +540,22 @@ with tab_match:
             f"{j['title']} @ {j['company']} — {j['location'] or '—'}"
             for j in ordered
         ]
-        idx = st.selectbox("Pick the target job", range(len(ordered)), format_func=lambda i: labels[i])
-        st.session_state.job = ordered[idx]
-        st.success(f"Target job selected — **{st.session_state.job['title']}** "
-                   f"@ {st.session_state.job['company']} (tabs 4 & 5)")
-        if st.session_state.job["url"]:
-            st.link_button("🔗 Open job posting", st.session_state.job["url"])
+        if not ordered:
+            st.info("No jobs left after filtering — run the job search in tab 2 again.")
+        else:
+            idx = st.selectbox("Pick the target job", range(len(ordered)),
+                               format_func=lambda i: labels[i])
+            chosen = ordered[idx]
+            if (st.session_state.job or {}).get("id") != chosen.get("id"):
+                # A new target invalidates everything generated for the old one.
+                for key in ("interview_md", "cover_de", "cover_en", "fit_result",
+                            "fit_target", "jd_cover_de", "jd_cover_en"):
+                    st.session_state[key] = None
+            st.session_state.job = chosen
+            st.success(f"Target job selected — **{chosen['title']}** "
+                       f"@ {chosen['company']} (tabs 4 & 5)")
+            if chosen["url"]:
+                st.link_button("🔗 Open job posting", chosen["url"])
 
 # ---- 4 · Interview --------------------------------------------------------
 with tab_interview:

@@ -109,7 +109,7 @@ JobPilot/
 │   ├── learning_plan.py    # build_learning_plan() for skill gaps
 │   └── store.py            # Local JSON persistence (profiles, job caches)
 ├── rag.py                  # Question bank RAG module
-├── tests/                  # Complete offline test suite (46 tests)
+├── tests/                  # Complete offline test suite (61 tests)
 ├── requirements.txt
 └── RESUME_JOBS.md          # Full design specification & API notes
 ```
@@ -125,9 +125,9 @@ JobPilot/
 - [x] **Interview Prep**: Role-tailored questions, answer strategies, and gap analysis
 - [x] **Cover Letter**: Automated German *Anschreiben* and English cover letters
 - [x] **Fit Check**: Choose a ranked job or paste any JD for fit score, missing skills, and learning plan
+- [x] **Second source**: Arbeitnow board merged in (opt-in checkbox, remote-focused)
 
 ### Planned Enhancements
-- [ ] UI toggle for Arbeitnow as an alternative job board
 - [ ] Vector RAG for customized technical question banks (`rag.py`)
 - [ ] One-click PDF download for generated cover letters and interview prep sheets
 

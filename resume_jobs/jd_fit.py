@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from resume_jobs.coerce import choice, score_0_100, string_list
 from resume_jobs.render import profile_block
 from resume_jobs.step import MODEL, run_step_tool
 
@@ -93,23 +94,6 @@ FIT_TOOL = {
 }
 
 
-def _score(value: object) -> float:
-    """Coerce to a number clamped to 0-100."""
-    try:
-        return max(0.0, min(100.0, float(value)))
-    except (TypeError, ValueError):
-        return 0.0
-
-
-def _strings(value: object) -> list[str]:
-    """A list of non-empty strings; a bare string becomes a one-item list."""
-    if isinstance(value, str):
-        value = [value]
-    elif not isinstance(value, list):
-        value = []
-    return [str(x).strip() for x in value if str(x).strip()]
-
-
 def _plan(value: object) -> list[dict]:
     """Coerce the learning plan into a clean list of steps (drops empty entries)."""
     steps: list[dict] = []
@@ -119,11 +103,10 @@ def _plan(value: object) -> list[dict]:
         skill = str(item.get("skill") or "").strip()
         if not skill:
             continue
-        priority = str(item.get("priority") or "").strip().lower()
         steps.append(
             {
                 "skill": skill,
-                "priority": priority if priority in ("high", "medium", "low") else "medium",
+                "priority": choice(item.get("priority"), ("high", "medium", "low"), "medium"),
                 "why": str(item.get("why") or "").strip(),
                 "how": str(item.get("how") or "").strip(),
                 "effort": str(item.get("effort") or "").strip(),
@@ -136,12 +119,12 @@ def normalize_fit(raw: object) -> dict:
     """Coerce any partial or garbled output into a complete fit dict."""
     raw = raw if isinstance(raw, dict) else {}
     return {
-        "score": _score(raw.get("score")),
+        "score": score_0_100(raw.get("score")),
         "verdict": str(raw.get("verdict") or "").strip(),
         "job_level": str(raw.get("job_level") or "unknown").strip().lower(),
         "level_fit": str(raw.get("level_fit") or "unknown").strip().lower(),
-        "matched_skills": _strings(raw.get("matched_skills")),
-        "missing_skills": _strings(raw.get("missing_skills")),
+        "matched_skills": string_list(raw.get("matched_skills")),
+        "missing_skills": string_list(raw.get("missing_skills")),
         "reason_de": str(raw.get("reason_de") or "").strip(),
         "reason_en": str(raw.get("reason_en") or "").strip(),
         "learning_plan": _plan(raw.get("learning_plan")),

@@ -20,20 +20,28 @@ _MONTHS = {
     "dec": 12, "december": 12, "dez": 12, "dezember": 12,
 }
 
-_EDUCATION_MARKERS = (
-    "student", "studium", "studierende", "universität", "universitaet",
-    "university", "hochschule", "college", "master", "bachelor", "phd",
-    "promotion", "degree", "ausbildung", "education", "schule",
+_EDUCATION_PATTERNS = (
+    # Degree phrases ("Master of Science", "Masterstudium") — deliberately not
+    # a bare "master", so a real role like "Master Data Engineer" still counts.
+    re.compile(r"\b(?:bachelor|master|phd|doctor|doktor)\s+(?:of|in|studium|s['’]?)\b", re.I),
+    re.compile(r"\b(?:b\.?sc|m\.?sc|b\.?a|m\.?a|mba|diplom|staatsexamen|abitur)\b", re.I),
+    re.compile(
+        r"\b(?:studium|student|universität|universitaet|university|hochschule|"
+        r"college|ausbildung|degree|promotion)\b",
+        re.I,
+    ),
 )
 
 
 def _is_education_entry(item: dict) -> bool:
-    """Exclude education accidentally emitted in the work-experience array."""
-    text = " ".join(
-        str(item.get(key) or "").lower()
-        for key in ("title", "company", "location", "industry", "highlights_de", "highlights_en")
-    )
-    return any(marker in text for marker in _EDUCATION_MARKERS)
+    """Exclude education accidentally emitted in the work-experience array.
+
+    Only the title and company are inspected: an education sector or a bullet
+    mentioning a degree must not disqualify a real job. The patterns are narrow
+    on purpose so job titles such as "Master Data Engineer" keep counting.
+    """
+    text = f"{item.get('title') or ''} {item.get('company') or ''}"
+    return any(pattern.search(text) for pattern in _EDUCATION_PATTERNS)
 
 
 def _month(value: object, today: date | None = None) -> int | None:
