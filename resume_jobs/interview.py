@@ -1,11 +1,10 @@
 """Step 4 — interview preparation in German + English, grounded in the resume.
 
 One LLM step (role / task / expected_output / context).
-An optional question bank (e.g. from rag.py) can be passed as extra context.
+An optional question bank can be passed as extra context.
 """
 from __future__ import annotations
 
-import os
 from typing import Any, Optional, Sequence
 
 from resume_jobs.render import job_block, profile_block
@@ -25,22 +24,6 @@ EXPECTED_OUTPUT = (
     "Markdown with two clearly separated sections, '## Deutsch' and '## English'. Each section "
     "contains 'Questions' (with answer outlines), 'Gap analysis', and 'Questions to ask'."
 )
-
-DEFAULT_QUESTION_BANK_FOLDER = "question_bank"
-
-
-def gather_question_bank(
-    query: str, folder: str = DEFAULT_QUESTION_BANK_FOLDER, k: int = 3
-) -> list[str]:
-    """Retrieve question-bank snippets via rag.py, or [] when the folder is absent."""
-    if not os.path.isdir(folder):
-        return []
-    try:
-        from rag import KnowledgeBase  # project-root module
-
-        return [hit["text"] for hit in KnowledgeBase(folder).search(query, k=k)]
-    except Exception:
-        return []
 
 
 def prepare_interview(

@@ -25,8 +25,8 @@ JobPilot is an end-to-end career copilot designed for the German tech job market
 
 | Step | Feature | Interface |
 |:---:|---|---|
-| 1 | **Resume Parser** — PDF → structured profile (DE + EN) | `resume_app.py` |
-| 2 | **Job Search** — live listings in Baden-Württemberg (Heilbronn, Stuttgart & beyond) | `jobs_app.py` |
+| 1 | **Resume Parser** — PDF → structured profile (DE + EN) | `streamlit_app.py` (`resume_jobs.resume`) |
+| 2 | **Job Search** — live listings in Baden-Württemberg (Heilbronn, Stuttgart & beyond) | `streamlit_app.py` (`resume_jobs.jobs`) |
 | 3 | **Smart Match** — rank jobs against the candidate profile with DE/EN rationale | Library (`resume_jobs.match`) |
 | 4 | **Interview Prep** — bilingual interview questions, answer outlines, and gap analysis | Library (`resume_jobs.interview`) |
 | 5 | **Cover Letter** — tailored *Anschreiben* (DE) + cover letter (EN) | Library (`resume_jobs.cover_letter`) |
@@ -61,12 +61,8 @@ cp .env.example .env   # or create .env directly
 ### 3. Launch the Application
 
 ```bash
-# Recommended: Launch the integrated all-in-one UI
+# Launch the integrated all-in-one UI
 streamlit run streamlit_app.py
-
-# Alternatively, launch standalone modules:
-streamlit run resume_app.py    # Resume parser tab
-streamlit run jobs_app.py      # Job search tab
 ```
 
 ### 4. Run Offline Tests
@@ -93,8 +89,6 @@ pytest tests/
 ```
 JobPilot/
 ├── streamlit_app.py        # All-in-one UI: workflow tabs + Fit Check
-├── resume_app.py           # Standalone: resume → profile
-├── jobs_app.py             # Standalone: job search corridor
 ├── resume_jobs/
 │   ├── llm.py              # Shared Groq client (lazy initialization)
 │   ├── schema.py           # Profile schema & normalization
@@ -108,7 +102,6 @@ JobPilot/
 │   ├── interview.py        # Step 4: prepare_interview()
 │   ├── learning_plan.py    # build_learning_plan() for skill gaps
 │   └── store.py            # Local JSON persistence (profiles, job caches)
-├── rag.py                  # Question bank RAG module
 ├── tests/                  # Complete offline test suite (61 tests)
 ├── requirements.txt
 └── RESUME_JOBS.md          # Full design specification & API notes
@@ -128,7 +121,6 @@ JobPilot/
 - [x] **Second source**: Arbeitnow board merged in (opt-in checkbox, remote-focused)
 
 ### Planned Enhancements
-- [ ] Vector RAG for customized technical question banks (`rag.py`)
 - [ ] One-click PDF download for generated cover letters and interview prep sheets
 
 See [`RESUME_JOBS.md`](RESUME_JOBS.md) for architectural details, API notes, and design guidelines.

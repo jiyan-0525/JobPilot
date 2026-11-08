@@ -30,8 +30,7 @@ Groq client now lives in `resume_jobs/llm.py`.
 ## Layout
 
 ```
-resume_app.py           # Streamlit: resume → profile       (tab 1)
-jobs_app.py             # Streamlit: job search corridor     (tab 2)
+streamlit_app.py        # Streamlit: full workflow UI (tabs 1-5 + fit check)
 resume_jobs/
 ├── llm.py              # shared Groq client (lazy init)
 ├── schema.py           # profile JSON schema + normalization (no third-party deps)
@@ -44,7 +43,6 @@ resume_jobs/
 ├── cover_letter.py     # write_cover_letter (per language: de / en)
 ├── learning_plan.py    # build_learning_plan (fit check → DE/EN study plan)
 └── store.py            # JSON persistence: save_profile / save_jobs
-rag.py                  # minimal RAG (question bank)
 tests/test_resume.py    # offline tests
 tests/test_jobs.py      # offline tests
 data/                   # generated artifacts (gitignored)
@@ -193,14 +191,11 @@ ranked = rank_jobs(profile, jobs, top_n=8)   # enrich=True fetches the shortlist
 ```python
 from resume_jobs.interview import prepare_interview
 markdown = prepare_interview(profile, job)             # bilingual DE + EN
-markdown = prepare_interview(profile, job, question_bank=gather_question_bank(query))
 ```
 
 - Returns Markdown with `## Deutsch` and `## English`, each containing questions + answer outlines,
   a gap analysis, and questions to ask — grounded strictly in the resume (no-fabrication guard is in
   `step.NO_FABRICATION`).
-- `question_bank` is an optional hook: `gather_question_bank()` uses `rag.py` when a question-bank
-  folder exists, and returns `[]` otherwise (the German question bank corpus is still TBD).
 
 ### Cover letter — `cover_letter.py`
 
@@ -231,10 +226,8 @@ bilingual (DE/EN) study plan: prioritised gaps plus ordered, time-boxed learning
 ```bash
 .venv/bin/python -m pip install -r requirements.txt
 
-# Tab 1 — resume parser
-.venv/bin/python -m streamlit run resume_app.py
-# Tab 2 — job search
-.venv/bin/python -m streamlit run jobs_app.py
+# Streamlit web app
+.venv/bin/python -m streamlit run streamlit_app.py
 
 # CLI: live search across the corridor
 .venv/bin/python -m resume_jobs.jobs
@@ -260,8 +253,6 @@ bilingual (DE/EN) study plan: prioritised gaps plus ordered, time-boxed learning
 
 - [x] **UI**: matching, interview, cover letter, and fit check are all in `streamlit_app.py`
   (tabs: Resume / Jobs / Match / Interview / Cover letter).
-- [ ] **Question bank (optional)**: a German question-bank corpus, wired into `gather_question_bank()`
-  → `prepare_interview`; retrieval uses `rag.py`.
 
 ## Explicitly out of scope
 

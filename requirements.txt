@@ -13,9 +13,5 @@ pypdf==6.20.1
 # Job search (Bundesagentur für Arbeit API)
 requests==2.33.1
 
-# RAG / local embeddings (question bank)
-fastembed==0.9.0
-numpy==2.4.4
-
 # Environment variables
 python-dotenv==1.2.2
