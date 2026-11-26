@@ -495,7 +495,12 @@ with tab_jobs:
 with tab_match:
     section("🎯", "Match")
     if not st.session_state.profile or not st.session_state.jobs:
-        st.info("Run tabs 1 (resume) and 2 (jobs) first.")
+        if not st.session_state.profile:
+            st.info("Run tab 1 (resume) first.")
+        else:
+            st.info("Run tab 2 (jobs) to rank jobs and pick a target. "
+                    "You can still fit-check a pasted job description below.")
+            render_fit_check()
     else:
         st.caption("Ranks the fetched jobs against the profile — fetches full descriptions for the shortlist.")
         if st.button("Rank jobs", type="primary"):
